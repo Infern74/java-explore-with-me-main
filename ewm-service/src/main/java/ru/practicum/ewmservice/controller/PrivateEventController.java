@@ -10,9 +10,9 @@ import ru.practicum.ewmservice.dto.UpdateEventUserRequest;
 import ru.practicum.ewmservice.service.EventService;
 import ru.practicum.ewmservice.service.PrivateEventService;
 
-import javax.validation.Valid;
-import javax.validation.constraints.Positive;
-import javax.validation.constraints.PositiveOrZero;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import java.util.List;
 
 @RestController

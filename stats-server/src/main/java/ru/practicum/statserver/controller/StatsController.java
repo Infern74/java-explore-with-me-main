@@ -8,7 +8,7 @@ import ru.practicum.dto.EndpointHit;
 import ru.practicum.statserver.model.ViewStats;
 import ru.practicum.statserver.service.StatsService;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.List;
 

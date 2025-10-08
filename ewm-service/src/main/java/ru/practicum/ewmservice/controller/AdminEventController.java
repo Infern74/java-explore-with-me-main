@@ -9,7 +9,7 @@ import ru.practicum.ewmservice.dto.UpdateEventAdminRequest;
 import ru.practicum.ewmservice.model.EventState;
 import ru.practicum.ewmservice.service.EventService;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.List;
 
