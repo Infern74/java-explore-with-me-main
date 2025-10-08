@@ -29,8 +29,6 @@ CREATE TABLE IF NOT EXISTS events (
     paid BOOLEAN NOT NULL DEFAULT FALSE,
     participant_limit INTEGER NOT NULL DEFAULT 0,
     request_moderation BOOLEAN NOT NULL DEFAULT TRUE,
-    views BIGINT NOT NULL DEFAULT 0,
-    confirmed_requests BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT pk_event PRIMARY KEY (id),
     CONSTRAINT fk_event_category FOREIGN KEY (category_id) REFERENCES categories (id),
     CONSTRAINT fk_event_initiator FOREIGN KEY (initiator_id) REFERENCES users (id)

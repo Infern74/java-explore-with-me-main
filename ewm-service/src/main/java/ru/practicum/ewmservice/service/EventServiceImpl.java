@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.dto.ViewStats;
@@ -18,6 +19,7 @@ import ru.practicum.ewmservice.mapper.EventMapper;
 import ru.practicum.ewmservice.model.Event;
 import ru.practicum.ewmservice.model.EventState;
 import ru.practicum.ewmservice.repository.EventRepository;
+import ru.practicum.ewmservice.repository.EventSpecifications;
 import ru.practicum.ewmservice.repository.ParticipationRequestRepository;
 
 import java.time.LocalDateTime;
@@ -41,47 +43,38 @@ public class EventServiceImpl implements EventService {
         log.info("Getting events with parameters: text={}, categories={}, paid={}, rangeStart={}, rangeEnd={}, onlyAvailable={}, sort={}, from={}, size={}",
                 text, categories, paid, rangeStart, rangeEnd, onlyAvailable, sort, from, size);
 
-        // Валидация параметров
-        if (from < 0) {
-            throw new ValidationException("From must be non-negative");
-        }
-        if (size <= 0) {
-            throw new ValidationException("Size must be positive");
-        }
+        validatePaginationParams(from, size);
+
         if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
             throw new ValidationException("Start date must be before end date");
         }
 
-        LocalDateTime start = rangeStart != null ? rangeStart : LocalDateTime.now();
-        LocalDateTime end = rangeEnd != null ? rangeEnd : LocalDateTime.now().plusYears(100);
+        Specification<Event> specification = Specification.where(EventSpecifications.isPublished())
+                .and(EventSpecifications.hasTextInAnnotationOrDescription(text))
+                .and(EventSpecifications.hasCategories(categories))
+                .and(EventSpecifications.isPaid(paid))
+                .and(EventSpecifications.isInDateRange(rangeStart, rangeEnd));
 
         Pageable pageable = createPageable(from, size, sort);
 
-        try {
-            List<Event> events = eventRepository.findEventsByPublic(
-                    text, categories, paid, start, end, pageable);
+        List<Event> events = eventRepository.findAll(specification, pageable).getContent();
 
-            if (onlyAvailable != null && onlyAvailable) {
-                events = events.stream()
-                        .filter(event -> event.getParticipantLimit() == 0 ||
-                                requestRepository.getConfirmedRequestsCount(event.getId()) < event.getParticipantLimit())
-                        .collect(Collectors.toList());
-            }
-
-            // Получаем статистику просмотров для событий
-            Map<Long, Long> viewsMap = getEventsViews(events);
-
-            return events.stream()
-                    .map(event -> {
-                        Long eventViews = viewsMap.getOrDefault(event.getId(), 0L);
-                        Long confirmedRequests = requestRepository.getConfirmedRequestsCount(event.getId());
-                        return EventMapper.toEventShortDto(event, eventViews, confirmedRequests);
-                    })
+        if (onlyAvailable != null && onlyAvailable) {
+            events = events.stream()
+                    .filter(event -> isEventAvailable(event))
                     .collect(Collectors.toList());
-        } catch (Exception e) {
-            log.error("Error while getting events: {}", e.getMessage(), e);
-            throw new ValidationException("Error while processing events request: " + e.getMessage());
         }
+
+        Map<Long, Long> viewsMap = getEventsViews(events);
+        Map<Long, Long> confirmedRequestsMap = getConfirmedRequestsMap(events);
+
+        return events.stream()
+                .map(event -> {
+                    Long eventViews = viewsMap.getOrDefault(event.getId(), 0L);
+                    Long confirmedRequests = confirmedRequestsMap.getOrDefault(event.getId(), 0L);
+                    return EventMapper.toEventShortDto(event, eventViews, confirmedRequests);
+                })
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -105,31 +98,28 @@ public class EventServiceImpl implements EventService {
         log.info("Getting events by admin: users={}, states={}, categories={}, rangeStart={}, rangeEnd={}, from={}, size={}",
                 users, states, categories, rangeStart, rangeEnd, from, size);
 
-        if (from < 0) {
-            throw new ValidationException("From must be non-negative");
-        }
-        if (size <= 0) {
-            throw new ValidationException("Size must be positive");
-        }
+        validatePaginationParams(from, size);
+
         if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
             throw new ValidationException("Start date must be before end date");
         }
 
-        LocalDateTime start = rangeStart != null ? rangeStart : LocalDateTime.now().minusYears(100);
-        LocalDateTime end = rangeEnd != null ? rangeEnd : LocalDateTime.now().plusYears(100);
+        Specification<Event> specification = Specification.where(EventSpecifications.hasUsers(users))
+                .and(EventSpecifications.hasStates(states))
+                .and(EventSpecifications.hasCategories(categories))
+                .and(EventSpecifications.isInDateRange(rangeStart, rangeEnd));
 
-        Pageable pageable = createPageable(from, size, "id");
+        Pageable pageable = PageRequest.of(from / size, size, Sort.by("id").ascending());
 
-        List<Event> events = eventRepository.findEventsByAdmin(
-                users, states, categories, start, end, pageable);
+        List<Event> events = eventRepository.findAll(specification, pageable).getContent();
 
-        // Получаем статистику просмотров для событий
         Map<Long, Long> viewsMap = getEventsViews(events);
+        Map<Long, Long> confirmedRequestsMap = getConfirmedRequestsMap(events);
 
         return events.stream()
                 .map(event -> {
                     Long eventViews = viewsMap.getOrDefault(event.getId(), 0L);
-                    Long confirmedRequests = requestRepository.getConfirmedRequestsCount(event.getId());
+                    Long confirmedRequests = confirmedRequestsMap.getOrDefault(event.getId(), 0L);
                     return EventMapper.toEventFullDto(event, eventViews, confirmedRequests);
                 })
                 .collect(Collectors.toList());
@@ -147,7 +137,6 @@ public class EventServiceImpl implements EventService {
                 if (event.getState() != EventState.PENDING) {
                     throw new ConflictException("Cannot publish the event because it's not in the right state: " + event.getState());
                 }
-                // Проверка даты события при публикации
                 if (event.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
                     throw new ValidationException("Cannot publish event because it starts in less than 1 hour");
                 }
@@ -168,7 +157,6 @@ public class EventServiceImpl implements EventService {
 
         Event updatedEvent = eventRepository.save(event);
 
-        // После обновления получаем актуальные views и confirmedRequests для маппинга
         Long views = getEventViews(eventId);
         Long confirmedRequests = requestRepository.getConfirmedRequestsCount(eventId);
         return EventMapper.toEventFullDto(updatedEvent, views, confirmedRequests);
@@ -177,7 +165,7 @@ public class EventServiceImpl implements EventService {
     private Pageable createPageable(Integer from, Integer size, String sort) {
         Sort sorting;
         if ("VIEWS".equals(sort)) {
-            sorting = Sort.by("views").descending();
+            sorting = Sort.by("id").ascending(); // Сортировка по views будет на уровне приложения
         } else if ("EVENT_DATE".equals(sort)) {
             sorting = Sort.by("eventDate").descending();
         } else {
@@ -187,33 +175,24 @@ public class EventServiceImpl implements EventService {
     }
 
     private void updateEventFields(Event event, UpdateEventAdminRequest updateRequest) {
-        if (updateRequest.getAnnotation() != null) {
+        if (updateRequest.getAnnotation() != null && !updateRequest.getAnnotation().isBlank()) {
             String annotation = updateRequest.getAnnotation().trim();
-            if (annotation.isEmpty()) {
-                throw new ValidationException("Annotation cannot be empty");
-            }
             if (annotation.length() < 20 || annotation.length() > 2000) {
                 throw new ValidationException("Annotation must be between 20 and 2000 characters");
             }
             event.setAnnotation(annotation);
         }
 
-        if (updateRequest.getDescription() != null) {
+        if (updateRequest.getDescription() != null && !updateRequest.getDescription().isBlank()) {
             String description = updateRequest.getDescription().trim();
-            if (description.isEmpty()) {
-                throw new ValidationException("Description cannot be empty");
-            }
             if (description.length() < 20 || description.length() > 7000) {
                 throw new ValidationException("Description must be between 20 and 7000 characters");
             }
             event.setDescription(description);
         }
 
-        if (updateRequest.getTitle() != null) {
+        if (updateRequest.getTitle() != null && !updateRequest.getTitle().isBlank()) {
             String title = updateRequest.getTitle().trim();
-            if (title.isEmpty()) {
-                throw new ValidationException("Title cannot be empty");
-            }
             if (title.length() < 3 || title.length() > 120) {
                 throw new ValidationException("Title must be between 3 and 120 characters");
             }
@@ -258,7 +237,7 @@ public class EventServiceImpl implements EventService {
                     .min(LocalDateTime::compareTo)
                     .orElse(LocalDateTime.now().minusYears(1));
 
-            LocalDateTime end = LocalDateTime.now();
+            LocalDateTime end = LocalDateTime.now().plusHours(1);
 
             List<ViewStats> stats = statsIntegrationService.getStats(start, end, uris, true);
 
@@ -277,13 +256,21 @@ public class EventServiceImpl implements EventService {
         }
     }
 
+    private Map<Long, Long> getConfirmedRequestsMap(List<Event> events) {
+        return events.stream()
+                .collect(Collectors.toMap(
+                        Event::getId,
+                        event -> requestRepository.getConfirmedRequestsCount(event.getId())
+                ));
+    }
+
     private Long getEventViews(Long eventId) {
         try {
             String uri = "/events/" + eventId;
             List<String> uris = List.of(uri);
 
             LocalDateTime start = LocalDateTime.now().minusYears(1);
-            LocalDateTime end = LocalDateTime.now();
+            LocalDateTime end = LocalDateTime.now().plusHours(1);
 
             List<ViewStats> stats = statsIntegrationService.getStats(start, end, uris, true);
 
@@ -303,6 +290,23 @@ public class EventServiceImpl implements EventService {
             return Long.parseLong(parts[parts.length - 1]);
         } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
             return null;
+        }
+    }
+
+    private boolean isEventAvailable(Event event) {
+        if (event.getParticipantLimit() == 0) {
+            return true;
+        }
+        Long confirmedRequests = requestRepository.getConfirmedRequestsCount(event.getId());
+        return confirmedRequests < event.getParticipantLimit();
+    }
+
+    private void validatePaginationParams(Integer from, Integer size) {
+        if (from < 0) {
+            throw new ValidationException("From must be non-negative");
+        }
+        if (size <= 0) {
+            throw new ValidationException("Size must be positive");
         }
     }
 }

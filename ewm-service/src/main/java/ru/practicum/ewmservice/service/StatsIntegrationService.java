@@ -25,7 +25,7 @@ public class StatsIntegrationService {
             hit.setIp(getClientIp(request));
             hit.setTimestamp(LocalDateTime.now());
             statsClient.saveHit(hit);
-            log.info("Saved hit for URI: {}, IP: {}", hit.getUri(), hit.getIp());
+            log.debug("Saved hit for URI: {}, IP: {}", hit.getUri(), hit.getIp());
         } catch (Exception e) {
             log.error("Failed to save hit to stats service: {}", e.getMessage());
         }
@@ -46,7 +46,7 @@ public class StatsIntegrationService {
             List<String> uris = List.of(uri);
 
             LocalDateTime start = LocalDateTime.now().minusYears(1);
-            LocalDateTime end = LocalDateTime.now();
+            LocalDateTime end = LocalDateTime.now().plusHours(1);
 
             List<ViewStats> stats = getStats(start, end, uris, true);
 
