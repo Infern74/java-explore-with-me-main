@@ -40,6 +40,10 @@ public class CompilationServiceImpl implements CompilationService {
 
         if (newCompilationDto.getEvents() != null && !newCompilationDto.getEvents().isEmpty()) {
             List<Event> events = eventRepository.findAllById(newCompilationDto.getEvents());
+            // Проверяем, что все события найдены
+            if (events.size() != newCompilationDto.getEvents().size()) {
+                throw new NotFoundException("Some events not found");
+            }
             compilation.setEvents(events);
         } else {
             compilation.setEvents(new ArrayList<>());
@@ -75,6 +79,10 @@ public class CompilationServiceImpl implements CompilationService {
 
         if (updateCompilationRequest.getEvents() != null) {
             List<Event> events = eventRepository.findAllById(updateCompilationRequest.getEvents());
+            // Проверяем, что все события найдены
+            if (events.size() != updateCompilationRequest.getEvents().size()) {
+                throw new NotFoundException("Some events not found");
+            }
             compilation.setEvents(events);
         }
 

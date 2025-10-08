@@ -3,12 +3,14 @@ package ru.practicum.ewmservice.service;
 import ru.practicum.statsclient.StatsClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import ru.practicum.dto.EndpointHit;
 import ru.practicum.dto.ViewStats;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -17,6 +19,7 @@ import java.util.List;
 public class StatsIntegrationService {
     private final StatsClient statsClient;
 
+    @Async
     public void saveHit(HttpServletRequest request) {
         try {
             EndpointHit hit = new EndpointHit();
@@ -25,7 +28,7 @@ public class StatsIntegrationService {
             hit.setIp(getClientIp(request));
             hit.setTimestamp(LocalDateTime.now());
             statsClient.saveHit(hit);
-            log.debug("Saved hit for URI: {}, IP: {}", hit.getUri(), hit.getIp());
+            log.debug("Successfully saved hit for URI: {}, IP: {}", hit.getUri(), hit.getIp());
         } catch (Exception e) {
             log.error("Failed to save hit to stats service: {}", e.getMessage());
         }
@@ -35,8 +38,8 @@ public class StatsIntegrationService {
         try {
             return statsClient.getStats(start, end, uris, unique);
         } catch (Exception e) {
-            log.error("Failed to get stats from stats service: {}", e.getMessage());
-            return List.of();
+            log.warn("Failed to get stats from stats service: {}", e.getMessage());
+            return Collections.emptyList();
         }
     }
 
@@ -45,17 +48,22 @@ public class StatsIntegrationService {
             String uri = "/events/" + eventId;
             List<String> uris = List.of(uri);
 
+            // Берем статистику за последний год
             LocalDateTime start = LocalDateTime.now().minusYears(1);
             LocalDateTime end = LocalDateTime.now().plusHours(1);
 
             List<ViewStats> stats = getStats(start, end, uris, true);
 
             if (!stats.isEmpty()) {
-                return stats.get(0).getHits();
+                Long views = stats.get(0).getHits();
+                log.debug("Retrieved views for event {}: {}", eventId, views);
+                return views;
             }
         } catch (Exception e) {
             log.warn("Failed to get views for event {}: {}", eventId, e.getMessage());
         }
+
+        log.debug("Returning default views (0) for event {}", eventId);
         return 0L;
     }
 

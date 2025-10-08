@@ -23,6 +23,12 @@ spring:
     init:
       platform: postgresql
       mode: always
+  task:
+    execution:
+      pool:
+        core-size: 5
+        max-size: 10
+        queue-capacity: 100
 
 stats:
   service:
@@ -30,6 +36,6 @@ stats:
 
 logging:
   level:
-    ru.practicum.ewmservice: INFO
+    ru.practicum.ewmservice: DEBUG
     org.hibernate.SQL: WARN
     org.springframework.web: WARN

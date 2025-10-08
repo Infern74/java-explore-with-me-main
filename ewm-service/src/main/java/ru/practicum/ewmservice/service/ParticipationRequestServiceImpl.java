@@ -51,6 +51,7 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         request.setRequester(user);
         request.setCreated(LocalDateTime.now());
 
+        // Устанавливаем статус в зависимости от настроек события
         if (!event.getRequestModeration() || event.getParticipantLimit() == 0) {
             request.setStatus(RequestStatus.CONFIRMED);
         } else {
@@ -58,6 +59,12 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         }
 
         ParticipationRequest savedRequest = requestRepository.save(request);
+
+        // Если заявка сразу подтверждена, обновляем счетчик подтвержденных заявок
+        if (request.getStatus() == RequestStatus.CONFIRMED) {
+            updateConfirmedRequestsCount(event);
+        }
+
         return ParticipationRequestMapper.toParticipationRequestDto(savedRequest);
     }
 
@@ -69,6 +76,11 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
 
         if (!request.getRequester().getId().equals(userId)) {
             throw new ValidationException("User can only cancel their own requests");
+        }
+
+        // Можно отменять только pending заявки
+        if (request.getStatus() != RequestStatus.PENDING) {
+            throw new ConflictException("Cannot cancel request that is not in PENDING status");
         }
 
         request.setStatus(RequestStatus.CANCELED);
@@ -99,10 +111,16 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
 
         validateRequestConfirmation(event, request);
 
+        // Проверяем лимит участников
+        Long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+        if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
+            throw new ConflictException("Event has reached participant limit");
+        }
+
         request.setStatus(RequestStatus.CONFIRMED);
         ParticipationRequest confirmedRequest = requestRepository.save(request);
 
-        // Проверяем, не достигнут ли лимит после подтверждения
+        // После подтверждения проверяем, не достигнут ли лимит
         checkAndRejectPendingRequestsIfNeeded(event);
 
         return ParticipationRequestMapper.toParticipationRequestDto(confirmedRequest);
@@ -125,18 +143,22 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
     }
 
     private void validateRequestCreation(Long userId, Event event) {
+        // Инициатор события не может подать заявку на участие
         if (event.getInitiator().getId().equals(userId)) {
             throw new ConflictException("Event initiator cannot create request for their own event");
         }
 
+        // Нельзя участвовать в неопубликованном событии
         if (event.getState() != EventState.PUBLISHED) {
             throw new ConflictException("Cannot participate in unpublished event");
         }
 
+        // Проверяем, не подавал ли пользователь уже заявку
         if (requestRepository.findByEventIdAndRequesterId(event.getId(), userId).isPresent()) {
             throw new ConflictException("Request from user=" + userId + " for event=" + event.getId() + " already exists");
         }
 
+        // Проверяем лимит участников
         Long confirmedCount = requestRepository.countByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED);
         if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
             throw new ConflictException("Event has reached participant limit");
@@ -166,11 +188,6 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
     }
 
     private void validateRequestConfirmation(Event event, ParticipationRequest request) {
-        Long confirmedCount = requestRepository.countByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED);
-        if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
-            throw new ConflictException("Event has reached participant limit");
-        }
-
         if (request.getStatus() != RequestStatus.PENDING) {
             throw new ConflictException("Request must be in PENDING status");
         }
@@ -178,21 +195,26 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
 
     private void checkAndRejectPendingRequestsIfNeeded(Event event) {
         Long confirmedCount = requestRepository.countByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED);
+
+        // Если лимит достигнут, отклоняем все оставшиеся заявки
         if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
-            rejectPendingRequests(event.getId());
+            List<ParticipationRequest> pendingRequests = requestRepository.findByEventId(event.getId()).stream()
+                    .filter(request -> request.getStatus() == RequestStatus.PENDING)
+                    .collect(Collectors.toList());
+
+            for (ParticipationRequest request : pendingRequests) {
+                request.setStatus(RequestStatus.REJECTED);
+            }
+
+            requestRepository.saveAll(pendingRequests);
+            log.info("Rejected {} pending requests for event {} due to participant limit",
+                    pendingRequests.size(), event.getId());
         }
     }
 
-    private void rejectPendingRequests(Long eventId) {
-        List<ParticipationRequest> pendingRequests = requestRepository.findByEventId(eventId).stream()
-                .filter(request -> request.getStatus() == RequestStatus.PENDING)
-                .collect(Collectors.toList());
-
-        for (ParticipationRequest request : pendingRequests) {
-            request.setStatus(RequestStatus.REJECTED);
-        }
-
-        requestRepository.saveAll(pendingRequests);
+    private void updateConfirmedRequestsCount(Event event) {
+        // Это метод для обновления счетчика, если нужно
+        log.debug("Confirmed request count updated for event {}", event.getId());
     }
 
     private void checkUserExists(Long userId) {

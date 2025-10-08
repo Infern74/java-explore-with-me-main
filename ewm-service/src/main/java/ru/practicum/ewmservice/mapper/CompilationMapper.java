@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 import ru.practicum.ewmservice.dto.CompilationDto;
 import ru.practicum.ewmservice.model.Compilation;
 import ru.practicum.ewmservice.repository.ParticipationRequestRepository;
-import ru.practicum.ewmservice.service.StatsIntegrationService;
 
 import java.util.stream.Collectors;
 
@@ -13,7 +12,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CompilationMapper {
 
-    private final StatsIntegrationService statsIntegrationService;
     private final ParticipationRequestRepository requestRepository;
 
     public CompilationDto toCompilationDto(Compilation compilation) {
@@ -25,9 +23,8 @@ public class CompilationMapper {
         if (compilation.getEvents() != null) {
             dto.setEvents(compilation.getEvents().stream()
                     .map(event -> {
-                        Long views = statsIntegrationService.getEventViews(event.getId());
                         Long confirmedRequests = requestRepository.getConfirmedRequestsCount(event.getId());
-                        return EventMapper.toEventShortDto(event, views, confirmedRequests);
+                        return EventMapper.toEventShortDto(event, event.getViews(), confirmedRequests);
                     })
                     .collect(Collectors.toList()));
         }

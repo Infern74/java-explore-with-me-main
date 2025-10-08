@@ -9,13 +9,24 @@ import ru.practicum.ewmservice.model.Event;
 public class EventMapper {
 
     public EventFullDto toEventFullDto(Event event, Long views, Long confirmedRequests) {
+        if (event == null) {
+            return null;
+        }
+
         EventFullDto dto = new EventFullDto();
         dto.setId(event.getId());
         dto.setTitle(event.getTitle());
         dto.setAnnotation(event.getAnnotation());
         dto.setDescription(event.getDescription());
-        dto.setCategory(CategoryMapper.toCategoryDto(event.getCategory()));
-        dto.setInitiator(UserMapper.toUserDto(event.getInitiator()));
+
+        if (event.getCategory() != null) {
+            dto.setCategory(CategoryMapper.toCategoryDto(event.getCategory()));
+        }
+
+        if (event.getInitiator() != null) {
+            dto.setInitiator(UserMapper.toUserDto(event.getInitiator()));
+        }
+
         dto.setEventDate(event.getEventDate());
         dto.setCreatedOn(event.getCreatedOn());
         dto.setPublishedOn(event.getPublishedOn());
@@ -24,22 +35,33 @@ public class EventMapper {
         dto.setPaid(event.getPaid());
         dto.setParticipantLimit(event.getParticipantLimit());
         dto.setRequestModeration(event.getRequestModeration());
-        dto.setViews(views);
-        dto.setConfirmedRequests(confirmedRequests);
+        dto.setViews(views != null ? views : 0L);
+        dto.setConfirmedRequests(confirmedRequests != null ? confirmedRequests : 0L);
         return dto;
     }
 
     public EventShortDto toEventShortDto(Event event, Long views, Long confirmedRequests) {
+        if (event == null) {
+            return null;
+        }
+
         EventShortDto dto = new EventShortDto();
         dto.setId(event.getId());
         dto.setTitle(event.getTitle());
         dto.setAnnotation(event.getAnnotation());
-        dto.setCategory(CategoryMapper.toCategoryDto(event.getCategory()));
-        dto.setInitiator(UserMapper.toUserDto(event.getInitiator()));
+
+        if (event.getCategory() != null) {
+            dto.setCategory(CategoryMapper.toCategoryDto(event.getCategory()));
+        }
+
+        if (event.getInitiator() != null) {
+            dto.setInitiator(UserMapper.toUserDto(event.getInitiator()));
+        }
+
         dto.setEventDate(event.getEventDate());
         dto.setPaid(event.getPaid());
-        dto.setViews(views);
-        dto.setConfirmedRequests(confirmedRequests);
+        dto.setViews(views != null ? views : 0L);
+        dto.setConfirmedRequests(confirmedRequests != null ? confirmedRequests : 0L);
         return dto;
     }
 }
