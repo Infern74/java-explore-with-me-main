@@ -4,31 +4,31 @@ server:
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://ewm-db:5432/ewm
+    url: jdbc:postgresql://localhost:5433/ewm
     username: praktikum
     password: praktikum
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        show_sql: true
+        show_sql: false
         format_sql: true
         jdbc:
           lob:
             non_contextual_creation: true
-    show-sql: true
+    show-sql: false
   sql:
     init:
       platform: postgresql
 
 stats:
   service:
-    url: http://stats-server:9090
+    url: http://localhost:9090
 
 logging:
   level:
-    ru.practicum.ewmservice: DEBUG
-    org.hibernate.type.descriptor.sql: trace
-    org.springframework.web: DEBUG
+    ru.practicum.ewmservice: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.web: INFO

@@ -1,6 +1,7 @@
 package ru.practicum.ewmservice.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -22,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -34,7 +36,16 @@ public class EventServiceImpl implements EventService {
     public List<EventShortDto> getEvents(String text, List<Long> categories, Boolean paid,
                                          LocalDateTime rangeStart, LocalDateTime rangeEnd,
                                          Boolean onlyAvailable, String sort, Integer from, Integer size) {
+        log.info("Getting events with parameters: text={}, categories={}, paid={}, rangeStart={}, rangeEnd={}, onlyAvailable={}, sort={}, from={}, size={}",
+                text, categories, paid, rangeStart, rangeEnd, onlyAvailable, sort, from, size);
 
+        // Валидация параметров
+        if (from < 0) {
+            throw new ValidationException("From must be non-negative");
+        }
+        if (size <= 0) {
+            throw new ValidationException("Size must be positive");
+        }
         if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
             throw new ValidationException("Start date must be before end date");
         }
@@ -49,30 +60,35 @@ public class EventServiceImpl implements EventService {
             pageable = PageRequest.of(from / size, size, Sort.by("eventDate").descending());
         }
 
-        List<Event> events = eventRepository.findEventsByPublic(
-                text, categories, paid, start, end, pageable);
+        try {
+            List<Event> events = eventRepository.findEventsByPublic(
+                    text, categories, paid, start, end, pageable);
 
-        if (onlyAvailable != null && onlyAvailable) {
-            events = events.stream()
-                    .filter(event -> event.getParticipantLimit() == 0 ||
-                            event.getConfirmedRequests() < event.getParticipantLimit())
+            if (onlyAvailable != null && onlyAvailable) {
+                events = events.stream()
+                        .filter(event -> event.getParticipantLimit() == 0 ||
+                                event.getConfirmedRequests() < event.getParticipantLimit())
+                        .collect(Collectors.toList());
+            }
+
+            // Получаем статистику просмотров для событий
+            Map<Long, Long> views = getEventsViews(events);
+
+            // Обновляем события с актуальным количеством просмотров
+            List<Event> updatedEvents = events.stream()
+                    .map(event -> {
+                        event.setViews(views.getOrDefault(event.getId(), 0L));
+                        return event;
+                    })
                     .collect(Collectors.toList());
+
+            return updatedEvents.stream()
+                    .map(EventMapper::toEventShortDto)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error while getting events: {}", e.getMessage(), e);
+            throw new ValidationException("Error while processing events request: " + e.getMessage());
         }
-
-        // Получаем статистику просмотров для событий
-        Map<Long, Long> views = getEventsViews(events);
-
-        // Обновляем события с актуальным количеством просмотров
-        List<Event> updatedEvents = events.stream()
-                .map(event -> {
-                    event.setViews(views.getOrDefault(event.getId(), 0L));
-                    return event;
-                })
-                .collect(Collectors.toList());
-
-        return updatedEvents.stream()
-                .map(EventMapper::toEventShortDto)
-                .collect(Collectors.toList());
     }
 
     @Override
@@ -95,7 +111,15 @@ public class EventServiceImpl implements EventService {
     public List<EventFullDto> getEventsByAdmin(List<Long> users, List<EventState> states, List<Long> categories,
                                                LocalDateTime rangeStart, LocalDateTime rangeEnd,
                                                Integer from, Integer size) {
+        log.info("Getting events by admin: users={}, states={}, categories={}, rangeStart={}, rangeEnd={}, from={}, size={}",
+                users, states, categories, rangeStart, rangeEnd, from, size);
 
+        if (from < 0) {
+            throw new ValidationException("From must be non-negative");
+        }
+        if (size <= 0) {
+            throw new ValidationException("Size must be positive");
+        }
         if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
             throw new ValidationException("Start date must be before end date");
         }
@@ -147,6 +171,8 @@ public class EventServiceImpl implements EventService {
                     throw new ConflictException("Cannot reject the event because it's already published");
                 }
                 event.setState(EventState.CANCELED);
+            } else {
+                throw new ValidationException("Invalid state action: " + updateEventAdminRequest.getStateAction());
             }
         }
 
@@ -154,29 +180,37 @@ public class EventServiceImpl implements EventService {
         updateEventFields(event, updateEventAdminRequest);
 
         Event updatedEvent = eventRepository.save(event);
-
         return EventMapper.toEventFullDto(updatedEvent);
     }
 
     private void updateEventFields(Event event, UpdateEventAdminRequest updateRequest) {
-        if (updateRequest.getAnnotation() != null && !updateRequest.getAnnotation().isBlank()) {
+        if (updateRequest.getAnnotation() != null) {
             String annotation = updateRequest.getAnnotation().trim();
+            if (annotation.isEmpty()) {
+                throw new ValidationException("Annotation cannot be empty");
+            }
             if (annotation.length() < 20 || annotation.length() > 2000) {
                 throw new ValidationException("Annotation must be between 20 and 2000 characters");
             }
             event.setAnnotation(annotation);
         }
 
-        if (updateRequest.getDescription() != null && !updateRequest.getDescription().isBlank()) {
+        if (updateRequest.getDescription() != null) {
             String description = updateRequest.getDescription().trim();
+            if (description.isEmpty()) {
+                throw new ValidationException("Description cannot be empty");
+            }
             if (description.length() < 20 || description.length() > 7000) {
                 throw new ValidationException("Description must be between 20 and 7000 characters");
             }
             event.setDescription(description);
         }
 
-        if (updateRequest.getTitle() != null && !updateRequest.getTitle().isBlank()) {
+        if (updateRequest.getTitle() != null) {
             String title = updateRequest.getTitle().trim();
+            if (title.isEmpty()) {
+                throw new ValidationException("Title cannot be empty");
+            }
             if (title.length() < 3 || title.length() > 120) {
                 throw new ValidationException("Title must be between 3 and 120 characters");
             }
@@ -211,41 +245,50 @@ public class EventServiceImpl implements EventService {
             return new HashMap<>();
         }
 
-        List<String> uris = events.stream()
-                .map(event -> "/events/" + event.getId())
-                .collect(Collectors.toList());
+        try {
+            List<String> uris = events.stream()
+                    .map(event -> "/events/" + event.getId())
+                    .collect(Collectors.toList());
 
-        LocalDateTime start = events.stream()
-                .map(Event::getCreatedOn)
-                .min(LocalDateTime::compareTo)
-                .orElse(LocalDateTime.now().minusYears(1));
+            LocalDateTime start = events.stream()
+                    .map(Event::getCreatedOn)
+                    .min(LocalDateTime::compareTo)
+                    .orElse(LocalDateTime.now().minusYears(1));
 
-        LocalDateTime end = LocalDateTime.now();
+            LocalDateTime end = LocalDateTime.now();
 
-        List<ViewStats> stats = statsIntegrationService.getStats(start, end, uris, true);
+            List<ViewStats> stats = statsIntegrationService.getStats(start, end, uris, true);
 
-        Map<Long, Long> views = new HashMap<>();
-        for (ViewStats stat : stats) {
-            Long eventId = extractEventIdFromUri(stat.getUri());
-            if (eventId != null) {
-                views.put(eventId, stat.getHits());
+            Map<Long, Long> views = new HashMap<>();
+            for (ViewStats stat : stats) {
+                Long eventId = extractEventIdFromUri(stat.getUri());
+                if (eventId != null) {
+                    views.put(eventId, stat.getHits());
+                }
             }
-        }
 
-        return views;
+            return views;
+        } catch (Exception e) {
+            log.warn("Failed to get views from stats service: {}", e.getMessage());
+            return new HashMap<>();
+        }
     }
 
     private Long getEventViews(Long eventId) {
-        String uri = "/events/" + eventId;
-        List<String> uris = List.of(uri);
+        try {
+            String uri = "/events/" + eventId;
+            List<String> uris = List.of(uri);
 
-        LocalDateTime start = LocalDateTime.now().minusYears(1);
-        LocalDateTime end = LocalDateTime.now();
+            LocalDateTime start = LocalDateTime.now().minusYears(1);
+            LocalDateTime end = LocalDateTime.now();
 
-        List<ViewStats> stats = statsIntegrationService.getStats(start, end, uris, true);
+            List<ViewStats> stats = statsIntegrationService.getStats(start, end, uris, true);
 
-        if (!stats.isEmpty()) {
-            return stats.get(0).getHits();
+            if (!stats.isEmpty()) {
+                return stats.get(0).getHits();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get views for event {}: {}", eventId, e.getMessage());
         }
 
         return 0L;

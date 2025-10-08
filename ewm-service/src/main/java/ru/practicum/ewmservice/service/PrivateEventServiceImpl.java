@@ -1,6 +1,7 @@
 package ru.practicum.ewmservice.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -26,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -37,6 +39,13 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
     @Override
     public List<EventShortDto> getUserEvents(Long userId, Integer from, Integer size) {
+        if (from < 0) {
+            throw new ValidationException("From must be non-negative");
+        }
+        if (size <= 0) {
+            throw new ValidationException("Size must be positive");
+        }
+
         if (!userRepository.existsById(userId)) {
             throw new NotFoundException("User with id=" + userId + " not found");
         }
@@ -143,9 +152,15 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         // Обновление полей
         updateEventFields(event, updateEventUserRequest);
 
-        // Если событие было отменено, переводим в состояние ожидания модерации
-        if (event.getState() == EventState.CANCELED) {
-            event.setState(EventState.PENDING);
+        // Обработка stateAction
+        if (updateEventUserRequest.getStateAction() != null) {
+            if ("SEND_TO_REVIEW".equals(updateEventUserRequest.getStateAction())) {
+                event.setState(EventState.PENDING);
+            } else if ("CANCEL_REVIEW".equals(updateEventUserRequest.getStateAction())) {
+                event.setState(EventState.CANCELED);
+            } else {
+                throw new ValidationException("Invalid state action: " + updateEventUserRequest.getStateAction());
+            }
         }
 
         Event updatedEvent = eventRepository.save(event);
