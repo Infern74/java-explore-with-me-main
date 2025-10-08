@@ -1,11 +1,15 @@
 package ru.practicum.statsclient;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
 public class StatsClientConfig {
+
+    @Value("${stats.service.url}")
+    private String statsServiceUrl;
 
     @Bean
     public RestTemplate restTemplate() {
@@ -14,7 +18,6 @@ public class StatsClientConfig {
 
     @Bean
     public StatsClient statsClient(RestTemplate restTemplate) {
-        String statsServiceUrl = "http://localhost:9090";
         return new StatsClientImpl(restTemplate, statsServiceUrl);
     }
 }
