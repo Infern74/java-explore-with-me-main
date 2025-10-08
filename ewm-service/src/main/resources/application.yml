@@ -1,0 +1,27 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://ewm-db:5432/ewm
+    username: praktikum
+    password: praktikum
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        show_sql: true
+        format_sql: true
+    show-sql: true
+
+stats:
+  service:
+    url: http://stats-server:9090
+
+logging:
+  level:
+    ru.practicum.ewmservice: DEBUG
+    org.hibernate.type.descriptor.sql: trace
