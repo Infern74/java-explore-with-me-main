@@ -97,17 +97,29 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
                 .collect(Collectors.toList());
     }
 
+    private void validateParticipantLimit(Event event) {
+        if (event.getParticipantLimit() > 0) {
+            Long confirmedCount = requestRepository.countByEventIdAndStatus(
+                    event.getId(), RequestStatus.CONFIRMED);
+            if (confirmedCount >= event.getParticipantLimit()) {
+                throw new ConflictException("Event participant limit reached");
+            }
+        }
+    }
+
     @Override
     @Transactional
     public ParticipationRequestDto confirmRequest(Long userId, Long eventId, Long reqId) {
+        log.debug("Confirming request: userId={}, eventId={}, requestId={}", userId, eventId, reqId);
+
         Event event = getEventAndValidateInitiator(userId, eventId);
+        validateParticipantLimit(event);
         ParticipationRequest request = getRequestAndValidateEvent(reqId, eventId);
 
         if (request.getStatus() != RequestStatus.PENDING) {
             throw new ConflictException("Request must be in PENDING status");
         }
 
-        // Проверяем лимит участников
         Long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
         if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
             throw new ConflictException("Event has reached participant limit");
@@ -115,9 +127,6 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
 
         request.setStatus(RequestStatus.CONFIRMED);
         ParticipationRequest confirmedRequest = requestRepository.save(request);
-
-        // После подтверждения проверяем, не достигнут ли лимит
-        checkAndRejectPendingRequestsIfNeeded(event);
 
         return ParticipationRequestMapper.toParticipationRequestDto(confirmedRequest);
     }

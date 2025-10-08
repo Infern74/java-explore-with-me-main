@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewmservice.dto.ParticipationRequestDto;
+import ru.practicum.ewmservice.exception.ConflictException;
 import ru.practicum.ewmservice.service.ParticipationRequestService;
 
 import java.util.List;
@@ -21,11 +22,15 @@ public class PrivateRequestController {
         return requestService.getUsersRequests(userId);
     }
 
-    @PostMapping
+    @PostMapping("/users/{userId}/requests")
     @ResponseStatus(HttpStatus.CREATED)
     public ParticipationRequestDto createRequest(@PathVariable Long userId,
                                                  @RequestParam Long eventId) {
-        return requestService.createRequest(userId, eventId);
+        try {
+            return requestService.createRequest(userId, eventId);
+        } catch (ConflictException e) {
+            throw e;
+        }
     }
 
     @PatchMapping("/{requestId}/cancel")
@@ -42,19 +47,19 @@ public class PrivateRequestController {
         return requestService.getEventRequests(userId, eventId);
     }
 
-    @PatchMapping("/events/{eventId}/requests/{reqId}/confirm")
+    @PatchMapping("/{requestId}/confirm")
     @ResponseStatus(HttpStatus.OK)
     public ParticipationRequestDto confirmRequest(@PathVariable Long userId,
                                                   @PathVariable Long eventId,
-                                                  @PathVariable Long reqId) {
-        return requestService.confirmRequest(userId, eventId, reqId);
+                                                  @PathVariable Long requestId) {
+        return requestService.confirmRequest(userId, eventId, requestId);
     }
 
-    @PatchMapping("/events/{eventId}/requests/{reqId}/reject")
+    @PatchMapping("/{requestId}/reject")
     @ResponseStatus(HttpStatus.OK)
     public ParticipationRequestDto rejectRequest(@PathVariable Long userId,
                                                  @PathVariable Long eventId,
-                                                 @PathVariable Long reqId) {
-        return requestService.rejectRequest(userId, eventId, reqId);
+                                                 @PathVariable Long requestId) {
+        return requestService.rejectRequest(userId, eventId, requestId);
     }
 }

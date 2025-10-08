@@ -95,16 +95,11 @@ public class ControllerExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorMessage handleDataIntegrityViolationException(DataIntegrityViolationException ex, HttpServletRequest request) {
-        log.error("DataIntegrityViolationException: {}", ex.getMessage());
-
         String message = "Database constraint violation";
+
         if (ex.getMessage() != null) {
-            if (ex.getMessage().contains("users_email_key")) {
-                message = "User with this email already exists";
-            } else if (ex.getMessage().contains("uq_category_name")) {
-                message = "Category with this name already exists";
-            } else if (ex.getMessage().contains("uq_request_event_requester")) {
-                message = "Request for this event from this user already exists";
+            if (ex.getMessage().contains("uq_request_event_requester")) {
+                message = "User has already submitted a request for this event";
             }
         }
 
