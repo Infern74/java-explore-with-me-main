@@ -22,7 +22,7 @@ public class PrivateRequestController {
         return requestService.getUsersRequests(userId);
     }
 
-    @PostMapping("/users/{userId}/requests")
+    @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ParticipationRequestDto createRequest(@PathVariable Long userId,
                                                  @RequestParam Long eventId) {
