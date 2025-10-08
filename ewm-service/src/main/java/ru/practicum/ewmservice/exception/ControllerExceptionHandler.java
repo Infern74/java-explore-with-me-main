@@ -71,4 +71,18 @@ public class ControllerExceptionHandler {
         log.error("Internal server error: {}", ex.getMessage(), ex);
         return new ErrorMessage(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal server error", request.getRequestURI());
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorMessage handleIllegalArgumentException(IllegalArgumentException ex, HttpServletRequest request) {
+        log.error("IllegalArgumentException: {}", ex.getMessage());
+        return new ErrorMessage(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), request.getRequestURI());
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ErrorMessage handleRuntimeException(RuntimeException ex, HttpServletRequest request) {
+        log.error("RuntimeException: {}", ex.getMessage(), ex);
+        return new ErrorMessage(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal server error: " + ex.getMessage(), request.getRequestURI());
+    }
 }

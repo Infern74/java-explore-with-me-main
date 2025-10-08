@@ -9,6 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.dto.ViewStats;
 import ru.practicum.ewmservice.dto.EventFullDto;
 import ru.practicum.ewmservice.dto.EventShortDto;
+import ru.practicum.ewmservice.dto.UpdateEventAdminRequest;
+import ru.practicum.ewmservice.exception.ConflictException;
 import ru.practicum.ewmservice.exception.NotFoundException;
 import ru.practicum.ewmservice.exception.ValidationException;
 import ru.practicum.ewmservice.mapper.EventMapper;
@@ -121,6 +123,90 @@ public class EventServiceImpl implements EventService {
         return updatedEvents.stream()
                 .map(EventMapper::toEventFullDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public EventFullDto updateEventByAdmin(Long eventId, UpdateEventAdminRequest updateEventAdminRequest) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found"));
+
+        // Проверка на публикацию/отклонение
+        if (updateEventAdminRequest.getStateAction() != null) {
+            if ("PUBLISH_EVENT".equals(updateEventAdminRequest.getStateAction())) {
+                if (event.getState() != EventState.PENDING) {
+                    throw new ConflictException("Cannot publish the event because it's not in the right state: " + event.getState());
+                }
+                event.setState(EventState.PUBLISHED);
+                event.setPublishedOn(LocalDateTime.now());
+            } else if ("REJECT_EVENT".equals(updateEventAdminRequest.getStateAction())) {
+                if (event.getState() == EventState.PUBLISHED) {
+                    throw new ConflictException("Cannot reject the event because it's already published");
+                }
+                event.setState(EventState.CANCELED);
+            }
+        }
+
+        // Обновление полей
+        updateEventFields(event, updateEventAdminRequest);
+
+        // Валидация даты при публикации
+        if (event.getState() == EventState.PUBLISHED && event.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
+            throw new ValidationException("Cannot publish event because it starts in less than 1 hour");
+        }
+
+        Event updatedEvent = eventRepository.save(event);
+
+        // Получаем актуальное количество просмотров
+        Long views = getEventViews(eventId);
+        updatedEvent.setViews(views);
+
+        return EventMapper.toEventFullDto(updatedEvent);
+    }
+
+    private void updateEventFields(Event event, UpdateEventAdminRequest updateRequest) {
+        if (updateRequest.getAnnotation() != null && !updateRequest.getAnnotation().isBlank()) {
+            if (updateRequest.getAnnotation().length() < 20 || updateRequest.getAnnotation().length() > 2000) {
+                throw new ValidationException("Annotation must be between 20 and 2000 characters");
+            }
+            event.setAnnotation(updateRequest.getAnnotation());
+        }
+
+        if (updateRequest.getDescription() != null && !updateRequest.getDescription().isBlank()) {
+            if (updateRequest.getDescription().length() < 20 || updateRequest.getDescription().length() > 7000) {
+                throw new ValidationException("Description must be between 20 and 7000 characters");
+            }
+            event.setDescription(updateRequest.getDescription());
+        }
+
+        if (updateRequest.getTitle() != null && !updateRequest.getTitle().isBlank()) {
+            if (updateRequest.getTitle().length() < 3 || updateRequest.getTitle().length() > 120) {
+                throw new ValidationException("Title must be between 3 and 120 characters");
+            }
+            event.setTitle(updateRequest.getTitle());
+        }
+
+        if (updateRequest.getEventDate() != null) {
+            if (updateRequest.getEventDate().isBefore(LocalDateTime.now())) {
+                throw new ValidationException("Event date must be in the future");
+            }
+            event.setEventDate(updateRequest.getEventDate());
+        }
+
+        if (updateRequest.getPaid() != null) {
+            event.setPaid(updateRequest.getPaid());
+        }
+
+        if (updateRequest.getParticipantLimit() != null) {
+            if (updateRequest.getParticipantLimit() < 0) {
+                throw new ValidationException("Participant limit cannot be negative");
+            }
+            event.setParticipantLimit(updateRequest.getParticipantLimit());
+        }
+
+        if (updateRequest.getRequestModeration() != null) {
+            event.setRequestModeration(updateRequest.getRequestModeration());
+        }
     }
 
     private Map<Long, Long> getEventsViews(List<Event> events) {

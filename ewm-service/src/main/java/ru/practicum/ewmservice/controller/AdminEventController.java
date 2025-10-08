@@ -5,9 +5,11 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewmservice.dto.EventFullDto;
+import ru.practicum.ewmservice.dto.UpdateEventAdminRequest;
 import ru.practicum.ewmservice.model.EventState;
 import ru.practicum.ewmservice.service.EventService;
 
+import javax.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -30,5 +32,12 @@ public class AdminEventController {
             @RequestParam(defaultValue = "10") Integer size) {
 
         return eventService.getEventsByAdmin(users, states, categories, rangeStart, rangeEnd, from, size);
+    }
+
+    @PatchMapping("/{eventId}")
+    @ResponseStatus(HttpStatus.OK)
+    public EventFullDto updateEventByAdmin(@PathVariable Long eventId,
+                                           @Valid @RequestBody UpdateEventAdminRequest updateEventAdminRequest) {
+        return eventService.updateEventByAdmin(eventId, updateEventAdminRequest);
     }
 }

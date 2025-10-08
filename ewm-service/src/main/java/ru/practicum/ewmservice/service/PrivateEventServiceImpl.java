@@ -57,10 +57,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         Category category = categoryRepository.findById(newEventDto.getCategory())
                 .orElseThrow(() -> new NotFoundException("Category with id=" + newEventDto.getCategory() + " not found"));
 
-        // Валидация даты события (не менее чем за 2 часа от текущего момента)
-        if (newEventDto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
-            throw new ValidationException("Event date must be at least 2 hours from now");
-        }
+        validateEventFields(newEventDto);
 
         Event event = new Event();
         event.setTitle(newEventDto.getTitle());
@@ -82,6 +79,42 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         return EventMapper.toEventFullDto(savedEvent);
     }
 
+    private void validateEventFields(NewEventDto newEventDto) {
+        // Валидация даты события
+        if (newEventDto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
+            throw new ValidationException("Event date must be at least 2 hours from now");
+        }
+
+        // Валидация аннотации
+        if (newEventDto.getAnnotation() == null || newEventDto.getAnnotation().trim().isEmpty()) {
+            throw new ValidationException("Annotation cannot be empty");
+        }
+        if (newEventDto.getAnnotation().length() < 20 || newEventDto.getAnnotation().length() > 2000) {
+            throw new ValidationException("Annotation must be between 20 and 2000 characters");
+        }
+
+        // Валидация описания
+        if (newEventDto.getDescription() == null || newEventDto.getDescription().trim().isEmpty()) {
+            throw new ValidationException("Description cannot be empty");
+        }
+        if (newEventDto.getDescription().length() < 20 || newEventDto.getDescription().length() > 7000) {
+            throw new ValidationException("Description must be between 20 and 7000 characters");
+        }
+
+        // Валидация заголовка
+        if (newEventDto.getTitle() == null || newEventDto.getTitle().trim().isEmpty()) {
+            throw new ValidationException("Title cannot be empty");
+        }
+        if (newEventDto.getTitle().length() < 3 || newEventDto.getTitle().length() > 120) {
+            throw new ValidationException("Title must be between 3 and 120 characters");
+        }
+
+        // Валидация лимита участников
+        if (newEventDto.getParticipantLimit() != null && newEventDto.getParticipantLimit() < 0) {
+            throw new ValidationException("Participant limit cannot be negative");
+        }
+    }
+
     @Override
     public EventFullDto getUserEvent(Long userId, Long eventId) {
         Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
@@ -96,52 +129,16 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found for user=" + userId));
 
-        // Проверка, что событие можно редактировать (не опубликовано)
+        // Проверка, что событие можно редактировать
         if (event.getState() == EventState.PUBLISHED) {
             throw new ConflictException("Only pending or canceled events can be changed");
         }
 
-        // Валидация даты события при обновлении
-        if (updateEventUserRequest.getEventDate() != null &&
-                updateEventUserRequest.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
-            throw new ValidationException("Event date must be at least 2 hours from now");
-        }
+        // Валидация полей при обновлении
+        validateUpdateEventFields(updateEventUserRequest);
 
-        // Валидация лимита участников
-        if (updateEventUserRequest.getParticipantLimit() != null && updateEventUserRequest.getParticipantLimit() < 0) {
-            throw new ValidationException("Participant limit cannot be negative");
-        }
-
-        // Обновление полей, если они предоставлены
-        if (updateEventUserRequest.getTitle() != null && !updateEventUserRequest.getTitle().isBlank()) {
-            event.setTitle(updateEventUserRequest.getTitle());
-        }
-        if (updateEventUserRequest.getAnnotation() != null && !updateEventUserRequest.getAnnotation().isBlank()) {
-            event.setAnnotation(updateEventUserRequest.getAnnotation());
-        }
-        if (updateEventUserRequest.getDescription() != null && !updateEventUserRequest.getDescription().isBlank()) {
-            event.setDescription(updateEventUserRequest.getDescription());
-        }
-        if (updateEventUserRequest.getCategory() != null) {
-            Category category = categoryRepository.findById(updateEventUserRequest.getCategory())
-                    .orElseThrow(() -> new NotFoundException("Category with id=" + updateEventUserRequest.getCategory() + " not found"));
-            event.setCategory(category);
-        }
-        if (updateEventUserRequest.getEventDate() != null) {
-            event.setEventDate(updateEventUserRequest.getEventDate());
-        }
-        if (updateEventUserRequest.getLocation() != null) {
-            event.setLocation(updateEventUserRequest.getLocation());
-        }
-        if (updateEventUserRequest.getPaid() != null) {
-            event.setPaid(updateEventUserRequest.getPaid());
-        }
-        if (updateEventUserRequest.getParticipantLimit() != null) {
-            event.setParticipantLimit(updateEventUserRequest.getParticipantLimit());
-        }
-        if (updateEventUserRequest.getRequestModeration() != null) {
-            event.setRequestModeration(updateEventUserRequest.getRequestModeration());
-        }
+        // Обновление полей
+        updateEventFields(event, updateEventUserRequest);
 
         // Если событие было отменено, переводим в состояние ожидания модерации
         if (event.getState() == EventState.CANCELED) {
@@ -150,5 +147,75 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
         Event updatedEvent = eventRepository.save(event);
         return EventMapper.toEventFullDto(updatedEvent);
+    }
+
+    private void validateUpdateEventFields(UpdateEventUserRequest updateRequest) {
+        if (updateRequest.getEventDate() != null &&
+                updateRequest.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
+            throw new ValidationException("Event date must be at least 2 hours from now");
+        }
+
+        if (updateRequest.getAnnotation() != null) {
+            if (updateRequest.getAnnotation().trim().isEmpty()) {
+                throw new ValidationException("Annotation cannot be empty");
+            }
+            if (updateRequest.getAnnotation().length() < 20 || updateRequest.getAnnotation().length() > 2000) {
+                throw new ValidationException("Annotation must be between 20 and 2000 characters");
+            }
+        }
+
+        if (updateRequest.getDescription() != null) {
+            if (updateRequest.getDescription().trim().isEmpty()) {
+                throw new ValidationException("Description cannot be empty");
+            }
+            if (updateRequest.getDescription().length() < 20 || updateRequest.getDescription().length() > 7000) {
+                throw new ValidationException("Description must be between 20 and 7000 characters");
+            }
+        }
+
+        if (updateRequest.getTitle() != null) {
+            if (updateRequest.getTitle().trim().isEmpty()) {
+                throw new ValidationException("Title cannot be empty");
+            }
+            if (updateRequest.getTitle().length() < 3 || updateRequest.getTitle().length() > 120) {
+                throw new ValidationException("Title must be between 3 and 120 characters");
+            }
+        }
+
+        if (updateRequest.getParticipantLimit() != null && updateRequest.getParticipantLimit() < 0) {
+            throw new ValidationException("Participant limit cannot be negative");
+        }
+    }
+
+    private void updateEventFields(Event event, UpdateEventUserRequest updateRequest) {
+        if (updateRequest.getTitle() != null && !updateRequest.getTitle().isBlank()) {
+            event.setTitle(updateRequest.getTitle());
+        }
+        if (updateRequest.getAnnotation() != null && !updateRequest.getAnnotation().isBlank()) {
+            event.setAnnotation(updateRequest.getAnnotation());
+        }
+        if (updateRequest.getDescription() != null && !updateRequest.getDescription().isBlank()) {
+            event.setDescription(updateRequest.getDescription());
+        }
+        if (updateRequest.getCategory() != null) {
+            Category category = categoryRepository.findById(updateRequest.getCategory())
+                    .orElseThrow(() -> new NotFoundException("Category with id=" + updateRequest.getCategory() + " not found"));
+            event.setCategory(category);
+        }
+        if (updateRequest.getEventDate() != null) {
+            event.setEventDate(updateRequest.getEventDate());
+        }
+        if (updateRequest.getLocation() != null) {
+            event.setLocation(updateRequest.getLocation());
+        }
+        if (updateRequest.getPaid() != null) {
+            event.setPaid(updateRequest.getPaid());
+        }
+        if (updateRequest.getParticipantLimit() != null) {
+            event.setParticipantLimit(updateRequest.getParticipantLimit());
+        }
+        if (updateRequest.getRequestModeration() != null) {
+            event.setRequestModeration(updateRequest.getRequestModeration());
+        }
     }
 }

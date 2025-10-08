@@ -25,3 +25,5 @@ logging:
   level:
     ru.practicum.ewmservice: DEBUG
     org.hibernate.type.descriptor.sql: trace
+    org.springframework.web: DEBUG
+    org.springframework.validation: DEBUG
