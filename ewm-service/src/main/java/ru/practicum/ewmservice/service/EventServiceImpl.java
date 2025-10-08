@@ -68,7 +68,7 @@ public class EventServiceImpl implements EventService {
                     event.setViews(views.getOrDefault(event.getId(), 0L));
                     return event;
                 })
-                .toList();
+                .collect(Collectors.toList());
 
         return updatedEvents.stream()
                 .map(EventMapper::toEventShortDto)
@@ -87,9 +87,8 @@ public class EventServiceImpl implements EventService {
         // Получаем актуальное количество просмотров
         Long views = getEventViews(eventId);
         event.setViews(views);
-        Event updatedEvent = eventRepository.save(event);
 
-        return EventMapper.toEventFullDto(updatedEvent);
+        return EventMapper.toEventFullDto(event);
     }
 
     @Override
@@ -118,7 +117,7 @@ public class EventServiceImpl implements EventService {
                     event.setViews(views.getOrDefault(event.getId(), 0L));
                     return event;
                 })
-                .toList();
+                .collect(Collectors.toList());
 
         return updatedEvents.stream()
                 .map(EventMapper::toEventFullDto)
@@ -137,6 +136,10 @@ public class EventServiceImpl implements EventService {
                 if (event.getState() != EventState.PENDING) {
                     throw new ConflictException("Cannot publish the event because it's not in the right state: " + event.getState());
                 }
+                // Проверка даты события при публикации
+                if (event.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
+                    throw new ValidationException("Cannot publish event because it starts in less than 1 hour");
+                }
                 event.setState(EventState.PUBLISHED);
                 event.setPublishedOn(LocalDateTime.now());
             } else if ("REJECT_EVENT".equals(updateEventAdminRequest.getStateAction())) {
@@ -150,40 +153,34 @@ public class EventServiceImpl implements EventService {
         // Обновление полей
         updateEventFields(event, updateEventAdminRequest);
 
-        // Валидация даты при публикации
-        if (event.getState() == EventState.PUBLISHED && event.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
-            throw new ValidationException("Cannot publish event because it starts in less than 1 hour");
-        }
-
         Event updatedEvent = eventRepository.save(event);
-
-        // Получаем актуальное количество просмотров
-        Long views = getEventViews(eventId);
-        updatedEvent.setViews(views);
 
         return EventMapper.toEventFullDto(updatedEvent);
     }
 
     private void updateEventFields(Event event, UpdateEventAdminRequest updateRequest) {
         if (updateRequest.getAnnotation() != null && !updateRequest.getAnnotation().isBlank()) {
-            if (updateRequest.getAnnotation().length() < 20 || updateRequest.getAnnotation().length() > 2000) {
+            String annotation = updateRequest.getAnnotation().trim();
+            if (annotation.length() < 20 || annotation.length() > 2000) {
                 throw new ValidationException("Annotation must be between 20 and 2000 characters");
             }
-            event.setAnnotation(updateRequest.getAnnotation());
+            event.setAnnotation(annotation);
         }
 
         if (updateRequest.getDescription() != null && !updateRequest.getDescription().isBlank()) {
-            if (updateRequest.getDescription().length() < 20 || updateRequest.getDescription().length() > 7000) {
+            String description = updateRequest.getDescription().trim();
+            if (description.length() < 20 || description.length() > 7000) {
                 throw new ValidationException("Description must be between 20 and 7000 characters");
             }
-            event.setDescription(updateRequest.getDescription());
+            event.setDescription(description);
         }
 
         if (updateRequest.getTitle() != null && !updateRequest.getTitle().isBlank()) {
-            if (updateRequest.getTitle().length() < 3 || updateRequest.getTitle().length() > 120) {
+            String title = updateRequest.getTitle().trim();
+            if (title.length() < 3 || title.length() > 120) {
                 throw new ValidationException("Title must be between 3 and 120 characters");
             }
-            event.setTitle(updateRequest.getTitle());
+            event.setTitle(title);
         }
 
         if (updateRequest.getEventDate() != null) {
@@ -248,7 +245,7 @@ public class EventServiceImpl implements EventService {
         List<ViewStats> stats = statsIntegrationService.getStats(start, end, uris, true);
 
         if (!stats.isEmpty()) {
-            return stats.getFirst().getHits();
+            return stats.get(0).getHits();
         }
 
         return 0L;

@@ -14,14 +14,14 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class NewEventDto {
 
-    @NotBlank(message = "Annotation cannot be blank")
+    @NotBlank(message = "Annotation cannot be empty")
     @Size(min = 20, max = 2000, message = "Annotation must be between 20 and 2000 characters")
     private String annotation;
 
     @NotNull(message = "Category cannot be null")
     private Long category;
 
-    @NotBlank(message = "Description cannot be blank")
+    @NotBlank(message = "Description cannot be empty")
     @Size(min = 20, max = 7000, message = "Description must be between 20 and 7000 characters")
     private String description;
 
@@ -35,12 +35,12 @@ public class NewEventDto {
 
     private Boolean paid = false;
 
-    @PositiveOrZero(message = "ParticipantLimit must be positive or zero")
+    @PositiveOrZero(message = "Participant limit cannot be negative")
     private Integer participantLimit = 0;
 
     private Boolean requestModeration = true;
 
-    @NotBlank(message = "Title cannot be blank")
+    @NotBlank(message = "Title cannot be empty")
     @Size(min = 3, max = 120, message = "Title must be between 3 and 120 characters")
     private String title;
 }

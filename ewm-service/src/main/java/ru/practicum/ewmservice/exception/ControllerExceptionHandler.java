@@ -2,6 +2,7 @@ package ru.practicum.ewmservice.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -65,6 +66,17 @@ public class ControllerExceptionHandler {
         return new ErrorMessage(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), request.getRequestURI());
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorMessage handleHttpMessageNotReadableException(HttpMessageNotReadableException ex, HttpServletRequest request) {
+        log.error("HttpMessageNotReadableException: {}", ex.getMessage());
+        String message = "Required request body is missing";
+        if (ex.getMessage() != null && ex.getMessage().contains("Required request body is missing")) {
+            message = "Required request body is missing";
+        }
+        return new ErrorMessage(HttpStatus.BAD_REQUEST.value(), message, request.getRequestURI());
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorMessage handleGlobalException(Exception ex, HttpServletRequest request) {
@@ -77,12 +89,5 @@ public class ControllerExceptionHandler {
     public ErrorMessage handleIllegalArgumentException(IllegalArgumentException ex, HttpServletRequest request) {
         log.error("IllegalArgumentException: {}", ex.getMessage());
         return new ErrorMessage(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), request.getRequestURI());
-    }
-
-    @ExceptionHandler(RuntimeException.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ErrorMessage handleRuntimeException(RuntimeException ex, HttpServletRequest request) {
-        log.error("RuntimeException: {}", ex.getMessage(), ex);
-        return new ErrorMessage(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal server error: " + ex.getMessage(), request.getRequestURI());
     }
 }

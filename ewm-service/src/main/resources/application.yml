@@ -9,13 +9,19 @@ spring:
     password: praktikum
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: create
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         show_sql: true
         format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
     show-sql: true
+  sql:
+    init:
+      platform: postgresql
 
 stats:
   service:
@@ -26,4 +32,3 @@ logging:
     ru.practicum.ewmservice: DEBUG
     org.hibernate.type.descriptor.sql: trace
     org.springframework.web: DEBUG
-    org.springframework.validation: DEBUG

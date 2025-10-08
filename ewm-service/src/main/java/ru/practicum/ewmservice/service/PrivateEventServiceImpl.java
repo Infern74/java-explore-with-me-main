@@ -59,10 +59,15 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
         validateEventFields(newEventDto);
 
+        // Проверка даты события (минимум 2 часа от текущего момента)
+        if (newEventDto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
+            throw new ValidationException("Event date must be at least 2 hours from now");
+        }
+
         Event event = new Event();
-        event.setTitle(newEventDto.getTitle());
-        event.setAnnotation(newEventDto.getAnnotation());
-        event.setDescription(newEventDto.getDescription());
+        event.setTitle(newEventDto.getTitle().trim());
+        event.setAnnotation(newEventDto.getAnnotation().trim());
+        event.setDescription(newEventDto.getDescription().trim());
         event.setCategory(category);
         event.setInitiator(user);
         event.setEventDate(newEventDto.getEventDate());
@@ -80,16 +85,12 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     }
 
     private void validateEventFields(NewEventDto newEventDto) {
-        // Валидация даты события
-        if (newEventDto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
-            throw new ValidationException("Event date must be at least 2 hours from now");
-        }
-
         // Валидация аннотации
         if (newEventDto.getAnnotation() == null || newEventDto.getAnnotation().trim().isEmpty()) {
             throw new ValidationException("Annotation cannot be empty");
         }
-        if (newEventDto.getAnnotation().length() < 20 || newEventDto.getAnnotation().length() > 2000) {
+        String annotation = newEventDto.getAnnotation().trim();
+        if (annotation.length() < 20 || annotation.length() > 2000) {
             throw new ValidationException("Annotation must be between 20 and 2000 characters");
         }
 
@@ -97,7 +98,8 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         if (newEventDto.getDescription() == null || newEventDto.getDescription().trim().isEmpty()) {
             throw new ValidationException("Description cannot be empty");
         }
-        if (newEventDto.getDescription().length() < 20 || newEventDto.getDescription().length() > 7000) {
+        String description = newEventDto.getDescription().trim();
+        if (description.length() < 20 || description.length() > 7000) {
             throw new ValidationException("Description must be between 20 and 7000 characters");
         }
 
@@ -105,7 +107,8 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         if (newEventDto.getTitle() == null || newEventDto.getTitle().trim().isEmpty()) {
             throw new ValidationException("Title cannot be empty");
         }
-        if (newEventDto.getTitle().length() < 3 || newEventDto.getTitle().length() > 120) {
+        String title = newEventDto.getTitle().trim();
+        if (title.length() < 3 || title.length() > 120) {
             throw new ValidationException("Title must be between 3 and 120 characters");
         }
 
@@ -156,28 +159,31 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         }
 
         if (updateRequest.getAnnotation() != null) {
-            if (updateRequest.getAnnotation().trim().isEmpty()) {
+            String annotation = updateRequest.getAnnotation().trim();
+            if (annotation.isEmpty()) {
                 throw new ValidationException("Annotation cannot be empty");
             }
-            if (updateRequest.getAnnotation().length() < 20 || updateRequest.getAnnotation().length() > 2000) {
+            if (annotation.length() < 20 || annotation.length() > 2000) {
                 throw new ValidationException("Annotation must be between 20 and 2000 characters");
             }
         }
 
         if (updateRequest.getDescription() != null) {
-            if (updateRequest.getDescription().trim().isEmpty()) {
+            String description = updateRequest.getDescription().trim();
+            if (description.isEmpty()) {
                 throw new ValidationException("Description cannot be empty");
             }
-            if (updateRequest.getDescription().length() < 20 || updateRequest.getDescription().length() > 7000) {
+            if (description.length() < 20 || description.length() > 7000) {
                 throw new ValidationException("Description must be between 20 and 7000 characters");
             }
         }
 
         if (updateRequest.getTitle() != null) {
-            if (updateRequest.getTitle().trim().isEmpty()) {
+            String title = updateRequest.getTitle().trim();
+            if (title.isEmpty()) {
                 throw new ValidationException("Title cannot be empty");
             }
-            if (updateRequest.getTitle().length() < 3 || updateRequest.getTitle().length() > 120) {
+            if (title.length() < 3 || title.length() > 120) {
                 throw new ValidationException("Title must be between 3 and 120 characters");
             }
         }
@@ -189,13 +195,13 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
     private void updateEventFields(Event event, UpdateEventUserRequest updateRequest) {
         if (updateRequest.getTitle() != null && !updateRequest.getTitle().isBlank()) {
-            event.setTitle(updateRequest.getTitle());
+            event.setTitle(updateRequest.getTitle().trim());
         }
         if (updateRequest.getAnnotation() != null && !updateRequest.getAnnotation().isBlank()) {
-            event.setAnnotation(updateRequest.getAnnotation());
+            event.setAnnotation(updateRequest.getAnnotation().trim());
         }
         if (updateRequest.getDescription() != null && !updateRequest.getDescription().isBlank()) {
-            event.setDescription(updateRequest.getDescription());
+            event.setDescription(updateRequest.getDescription().trim());
         }
         if (updateRequest.getCategory() != null) {
             Category category = categoryRepository.findById(updateRequest.getCategory())
