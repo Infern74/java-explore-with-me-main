@@ -48,9 +48,9 @@ public class StatsIntegrationService {
             String uri = "/events/" + eventId;
             List<String> uris = List.of(uri);
 
-            // Берем статистику за последний год
-            LocalDateTime start = LocalDateTime.now().minusYears(1);
-            LocalDateTime end = LocalDateTime.now().plusHours(1);
+            // Берем статистику с самого начала времени
+            LocalDateTime start = LocalDateTime.of(2020, 1, 1, 0, 0);
+            LocalDateTime end = LocalDateTime.now().plusYears(1);
 
             List<ViewStats> stats = getStats(start, end, uris, true);
 

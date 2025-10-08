@@ -68,13 +68,20 @@ public class EventServiceImpl implements EventService {
         Map<Long, Long> viewsMap = getEventsViews(events);
         Map<Long, Long> confirmedRequestsMap = getConfirmedRequestsMap(events);
 
-        return events.stream()
+        List<EventShortDto> result = events.stream()
                 .map(event -> {
                     Long eventViews = viewsMap.getOrDefault(event.getId(), 0L);
                     Long confirmedRequests = confirmedRequestsMap.getOrDefault(event.getId(), 0L);
                     return EventMapper.toEventShortDto(event, eventViews, confirmedRequests);
                 })
                 .collect(Collectors.toList());
+
+        // Сортировка по просмотрам если требуется
+        if ("VIEWS".equals(sort)) {
+            result.sort(Comparator.comparing(EventShortDto::getViews).reversed());
+        }
+
+        return result;
     }
 
     @Override
@@ -138,7 +145,7 @@ public class EventServiceImpl implements EventService {
                     throw new ConflictException("Cannot publish the event because it's not in the right state: " + event.getState());
                 }
                 if (event.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
-                    throw new ValidationException("Cannot publish event because it starts in less than 1 hour");
+                    throw new ConflictException("Cannot publish event because it starts in less than 1 hour");
                 }
                 event.setState(EventState.PUBLISHED);
                 event.setPublishedOn(LocalDateTime.now());
@@ -162,11 +169,10 @@ public class EventServiceImpl implements EventService {
         return EventMapper.toEventFullDto(updatedEvent, views, confirmedRequests);
     }
 
+    // Остальные методы остаются без изменений...
     private Pageable createPageable(Integer from, Integer size, String sort) {
         Sort sorting;
-        if ("VIEWS".equals(sort)) {
-            sorting = Sort.by("id").ascending(); // Сортировка по views будет на уровне приложения
-        } else if ("EVENT_DATE".equals(sort)) {
+        if ("EVENT_DATE".equals(sort)) {
             sorting = Sort.by("eventDate").descending();
         } else {
             sorting = Sort.by("id").ascending();
@@ -232,12 +238,8 @@ public class EventServiceImpl implements EventService {
                     .map(event -> "/events/" + event.getId())
                     .collect(Collectors.toList());
 
-            LocalDateTime start = events.stream()
-                    .map(Event::getCreatedOn)
-                    .min(LocalDateTime::compareTo)
-                    .orElse(LocalDateTime.now().minusYears(1));
-
-            LocalDateTime end = LocalDateTime.now().plusHours(1);
+            LocalDateTime start = LocalDateTime.of(2020, 1, 1, 0, 0);
+            LocalDateTime end = LocalDateTime.now().plusYears(1);
 
             List<ViewStats> stats = statsIntegrationService.getStats(start, end, uris, true);
 
@@ -265,23 +267,7 @@ public class EventServiceImpl implements EventService {
     }
 
     private Long getEventViews(Long eventId) {
-        try {
-            String uri = "/events/" + eventId;
-            List<String> uris = List.of(uri);
-
-            LocalDateTime start = LocalDateTime.now().minusYears(1);
-            LocalDateTime end = LocalDateTime.now().plusHours(1);
-
-            List<ViewStats> stats = statsIntegrationService.getStats(start, end, uris, true);
-
-            if (!stats.isEmpty()) {
-                return stats.get(0).getHits();
-            }
-        } catch (Exception e) {
-            log.warn("Failed to get views for event {}: {}", eventId, e.getMessage());
-        }
-
-        return 0L;
+        return statsIntegrationService.getEventViews(eventId);
     }
 
     private Long extractEventIdFromUri(String uri) {

@@ -1,6 +1,7 @@
 package ru.practicum.ewmservice.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -89,5 +90,24 @@ public class ControllerExceptionHandler {
     public ErrorMessage handleIllegalArgumentException(IllegalArgumentException ex, HttpServletRequest request) {
         log.error("IllegalArgumentException: {}", ex.getMessage());
         return new ErrorMessage(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), request.getRequestURI());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorMessage handleDataIntegrityViolationException(DataIntegrityViolationException ex, HttpServletRequest request) {
+        log.error("DataIntegrityViolationException: {}", ex.getMessage());
+
+        String message = "Database constraint violation";
+        if (ex.getMessage() != null) {
+            if (ex.getMessage().contains("users_email_key")) {
+                message = "User with this email already exists";
+            } else if (ex.getMessage().contains("uq_category_name")) {
+                message = "Category with this name already exists";
+            } else if (ex.getMessage().contains("uq_request_event_requester")) {
+                message = "Request for this event from this user already exists";
+            }
+        }
+
+        return new ErrorMessage(HttpStatus.CONFLICT.value(), message, request.getRequestURI());
     }
 }

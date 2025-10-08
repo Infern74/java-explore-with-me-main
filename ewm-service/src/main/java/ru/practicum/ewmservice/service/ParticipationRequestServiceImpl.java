@@ -2,6 +2,7 @@ package ru.practicum.ewmservice.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewmservice.dto.ParticipationRequestDto;
@@ -58,14 +59,12 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
             request.setStatus(RequestStatus.PENDING);
         }
 
-        ParticipationRequest savedRequest = requestRepository.save(request);
-
-        // Если заявка сразу подтверждена, обновляем счетчик подтвержденных заявок
-        if (request.getStatus() == RequestStatus.CONFIRMED) {
-            updateConfirmedRequestsCount(event);
+        try {
+            ParticipationRequest savedRequest = requestRepository.save(request);
+            return ParticipationRequestMapper.toParticipationRequestDto(savedRequest);
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException("Request from user=" + userId + " for event=" + eventId + " already exists");
         }
-
-        return ParticipationRequestMapper.toParticipationRequestDto(savedRequest);
     }
 
     @Override
@@ -76,11 +75,6 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
 
         if (!request.getRequester().getId().equals(userId)) {
             throw new ValidationException("User can only cancel their own requests");
-        }
-
-        // Можно отменять только pending заявки
-        if (request.getStatus() != RequestStatus.PENDING) {
-            throw new ConflictException("Cannot cancel request that is not in PENDING status");
         }
 
         request.setStatus(RequestStatus.CANCELED);
@@ -109,7 +103,9 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         Event event = getEventAndValidateInitiator(userId, eventId);
         ParticipationRequest request = getRequestAndValidateEvent(reqId, eventId);
 
-        validateRequestConfirmation(event, request);
+        if (request.getStatus() != RequestStatus.PENDING) {
+            throw new ConflictException("Request must be in PENDING status");
+        }
 
         // Проверяем лимит участников
         Long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
@@ -158,10 +154,12 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
             throw new ConflictException("Request from user=" + userId + " for event=" + event.getId() + " already exists");
         }
 
-        // Проверяем лимит участников
-        Long confirmedCount = requestRepository.countByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED);
-        if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
-            throw new ConflictException("Event has reached participant limit");
+        // Проверяем лимит участников (только если требуется модерация)
+        if (event.getRequestModeration() && event.getParticipantLimit() > 0) {
+            Long confirmedCount = requestRepository.countByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED);
+            if (confirmedCount >= event.getParticipantLimit()) {
+                throw new ConflictException("Event has reached participant limit");
+            }
         }
     }
 
@@ -187,34 +185,26 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         return request;
     }
 
-    private void validateRequestConfirmation(Event event, ParticipationRequest request) {
-        if (request.getStatus() != RequestStatus.PENDING) {
-            throw new ConflictException("Request must be in PENDING status");
-        }
-    }
-
     private void checkAndRejectPendingRequestsIfNeeded(Event event) {
+        if (event.getParticipantLimit() == 0 || !event.getRequestModeration()) {
+            return;
+        }
+
         Long confirmedCount = requestRepository.countByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED);
 
         // Если лимит достигнут, отклоняем все оставшиеся заявки
-        if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
+        if (confirmedCount >= event.getParticipantLimit()) {
             List<ParticipationRequest> pendingRequests = requestRepository.findByEventId(event.getId()).stream()
                     .filter(request -> request.getStatus() == RequestStatus.PENDING)
                     .collect(Collectors.toList());
 
             for (ParticipationRequest request : pendingRequests) {
                 request.setStatus(RequestStatus.REJECTED);
+                log.info("Rejected request {} for event {} due to participant limit", request.getId(), event.getId());
             }
 
             requestRepository.saveAll(pendingRequests);
-            log.info("Rejected {} pending requests for event {} due to participant limit",
-                    pendingRequests.size(), event.getId());
         }
-    }
-
-    private void updateConfirmedRequestsCount(Event event) {
-        // Это метод для обновления счетчика, если нужно
-        log.debug("Confirmed request count updated for event {}", event.getId());
     }
 
     private void checkUserExists(Long userId) {

@@ -36,6 +36,8 @@ stats:
 
 logging:
   level:
-    ru.practicum.ewmservice: DEBUG
+    ru.practicum.ewmservice: INFO
+    ru.practicum.ewmservice.service.ParticipationRequestServiceImpl: DEBUG
+    ru.practicum.ewmservice.service.StatsIntegrationService: DEBUG
     org.hibernate.SQL: WARN
     org.springframework.web: WARN
