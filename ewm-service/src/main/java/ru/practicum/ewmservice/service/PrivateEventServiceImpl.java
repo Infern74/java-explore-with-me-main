@@ -21,6 +21,7 @@ import ru.practicum.ewmservice.model.EventState;
 import ru.practicum.ewmservice.model.User;
 import ru.practicum.ewmservice.repository.CategoryRepository;
 import ru.practicum.ewmservice.repository.EventRepository;
+import ru.practicum.ewmservice.repository.ParticipationRequestRepository;
 import ru.practicum.ewmservice.repository.UserRepository;
 
 import java.time.LocalDateTime;
@@ -36,6 +37,8 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
+    private final ParticipationRequestRepository requestRepository;
+    private final StatsIntegrationService statsIntegrationService;
 
     @Override
     public List<EventShortDto> getUserEvents(Long userId, Integer from, Integer size) {
@@ -54,7 +57,11 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         List<Event> events = eventRepository.findByInitiatorId(userId, pageable);
 
         return events.stream()
-                .map(EventMapper::toEventShortDto)
+                .map(event -> {
+                    Long views = statsIntegrationService.getEventViews(event.getId());
+                    Long confirmedRequests = requestRepository.getConfirmedRequestsCount(event.getId());
+                    return EventMapper.toEventShortDto(event, views, confirmedRequests);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -86,11 +93,11 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         event.setPaid(newEventDto.getPaid() != null ? newEventDto.getPaid() : false);
         event.setParticipantLimit(newEventDto.getParticipantLimit() != null ? newEventDto.getParticipantLimit() : 0);
         event.setRequestModeration(newEventDto.getRequestModeration() != null ? newEventDto.getRequestModeration() : true);
-        event.setViews(0L);
-        event.setConfirmedRequests(0L);
 
         Event savedEvent = eventRepository.save(event);
-        return EventMapper.toEventFullDto(savedEvent);
+
+        // Для нового события views и confirmedRequests будут 0
+        return EventMapper.toEventFullDto(savedEvent, 0L, 0L);
     }
 
     private void validateEventFields(NewEventDto newEventDto) {
@@ -132,7 +139,9 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found for user=" + userId));
 
-        return EventMapper.toEventFullDto(event);
+        Long views = statsIntegrationService.getEventViews(eventId);
+        Long confirmedRequests = requestRepository.getConfirmedRequestsCount(eventId);
+        return EventMapper.toEventFullDto(event, views, confirmedRequests);
     }
 
     @Override
@@ -164,7 +173,10 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         }
 
         Event updatedEvent = eventRepository.save(event);
-        return EventMapper.toEventFullDto(updatedEvent);
+
+        Long views = statsIntegrationService.getEventViews(eventId);
+        Long confirmedRequests = requestRepository.getConfirmedRequestsCount(eventId);
+        return EventMapper.toEventFullDto(updatedEvent, views, confirmedRequests);
     }
 
     private void validateUpdateEventFields(UpdateEventUserRequest updateRequest) {

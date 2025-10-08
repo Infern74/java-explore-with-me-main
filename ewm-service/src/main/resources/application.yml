@@ -30,6 +30,6 @@ stats:
 
 logging:
   level:
-    ru.practicum.ewmservice: INFO
+    ru.practicum.ewmservice: DEBUG
     org.hibernate.SQL: WARN
     org.springframework.web: INFO

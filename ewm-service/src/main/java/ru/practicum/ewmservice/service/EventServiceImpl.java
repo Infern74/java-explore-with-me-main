@@ -18,6 +18,7 @@ import ru.practicum.ewmservice.mapper.EventMapper;
 import ru.practicum.ewmservice.model.Event;
 import ru.practicum.ewmservice.model.EventState;
 import ru.practicum.ewmservice.repository.EventRepository;
+import ru.practicum.ewmservice.repository.ParticipationRequestRepository;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -31,6 +32,7 @@ public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
     private final StatsIntegrationService statsIntegrationService;
+    private final ParticipationRequestRepository requestRepository;
 
     @Override
     public List<EventShortDto> getEvents(String text, List<Long> categories, Boolean paid,
@@ -53,12 +55,7 @@ public class EventServiceImpl implements EventService {
         LocalDateTime start = rangeStart != null ? rangeStart : LocalDateTime.now();
         LocalDateTime end = rangeEnd != null ? rangeEnd : LocalDateTime.now().plusYears(100);
 
-        Pageable pageable;
-        if ("VIEWS".equals(sort)) {
-            pageable = PageRequest.of(from / size, size, Sort.by("views").descending());
-        } else {
-            pageable = PageRequest.of(from / size, size, Sort.by("eventDate").descending());
-        }
+        Pageable pageable = createPageable(from, size, sort);
 
         try {
             List<Event> events = eventRepository.findEventsByPublic(
@@ -67,23 +64,19 @@ public class EventServiceImpl implements EventService {
             if (onlyAvailable != null && onlyAvailable) {
                 events = events.stream()
                         .filter(event -> event.getParticipantLimit() == 0 ||
-                                event.getConfirmedRequests() < event.getParticipantLimit())
+                                requestRepository.getConfirmedRequestsCount(event.getId()) < event.getParticipantLimit())
                         .collect(Collectors.toList());
             }
 
             // Получаем статистику просмотров для событий
-            Map<Long, Long> views = getEventsViews(events);
+            Map<Long, Long> viewsMap = getEventsViews(events);
 
-            // Обновляем события с актуальным количеством просмотров
-            List<Event> updatedEvents = events.stream()
+            return events.stream()
                     .map(event -> {
-                        event.setViews(views.getOrDefault(event.getId(), 0L));
-                        return event;
+                        Long eventViews = viewsMap.getOrDefault(event.getId(), 0L);
+                        Long confirmedRequests = requestRepository.getConfirmedRequestsCount(event.getId());
+                        return EventMapper.toEventShortDto(event, eventViews, confirmedRequests);
                     })
-                    .collect(Collectors.toList());
-
-            return updatedEvents.stream()
-                    .map(EventMapper::toEventShortDto)
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Error while getting events: {}", e.getMessage(), e);
@@ -100,11 +93,9 @@ public class EventServiceImpl implements EventService {
             throw new NotFoundException("Event with id=" + eventId + " is not published");
         }
 
-        // Получаем актуальное количество просмотров
         Long views = getEventViews(eventId);
-        event.setViews(views);
-
-        return EventMapper.toEventFullDto(event);
+        Long confirmedRequests = requestRepository.getConfirmedRequestsCount(eventId);
+        return EventMapper.toEventFullDto(event, views, confirmedRequests);
     }
 
     @Override
@@ -127,24 +118,20 @@ public class EventServiceImpl implements EventService {
         LocalDateTime start = rangeStart != null ? rangeStart : LocalDateTime.now().minusYears(100);
         LocalDateTime end = rangeEnd != null ? rangeEnd : LocalDateTime.now().plusYears(100);
 
-        Pageable pageable = PageRequest.of(from / size, size, Sort.by("id").ascending());
+        Pageable pageable = createPageable(from, size, "id");
 
         List<Event> events = eventRepository.findEventsByAdmin(
                 users, states, categories, start, end, pageable);
 
         // Получаем статистику просмотров для событий
-        Map<Long, Long> views = getEventsViews(events);
+        Map<Long, Long> viewsMap = getEventsViews(events);
 
-        // Обновляем события с актуальным количеством просмотров
-        List<Event> updatedEvents = events.stream()
+        return events.stream()
                 .map(event -> {
-                    event.setViews(views.getOrDefault(event.getId(), 0L));
-                    return event;
+                    Long eventViews = viewsMap.getOrDefault(event.getId(), 0L);
+                    Long confirmedRequests = requestRepository.getConfirmedRequestsCount(event.getId());
+                    return EventMapper.toEventFullDto(event, eventViews, confirmedRequests);
                 })
-                .collect(Collectors.toList());
-
-        return updatedEvents.stream()
-                .map(EventMapper::toEventFullDto)
                 .collect(Collectors.toList());
     }
 
@@ -180,7 +167,23 @@ public class EventServiceImpl implements EventService {
         updateEventFields(event, updateEventAdminRequest);
 
         Event updatedEvent = eventRepository.save(event);
-        return EventMapper.toEventFullDto(updatedEvent);
+
+        // После обновления получаем актуальные views и confirmedRequests для маппинга
+        Long views = getEventViews(eventId);
+        Long confirmedRequests = requestRepository.getConfirmedRequestsCount(eventId);
+        return EventMapper.toEventFullDto(updatedEvent, views, confirmedRequests);
+    }
+
+    private Pageable createPageable(Integer from, Integer size, String sort) {
+        Sort sorting;
+        if ("VIEWS".equals(sort)) {
+            sorting = Sort.by("views").descending();
+        } else if ("EVENT_DATE".equals(sort)) {
+            sorting = Sort.by("eventDate").descending();
+        } else {
+            sorting = Sort.by("id").ascending();
+        }
+        return PageRequest.of(from > 0 ? from / size : 0, size, sorting);
     }
 
     private void updateEventFields(Event event, UpdateEventAdminRequest updateRequest) {

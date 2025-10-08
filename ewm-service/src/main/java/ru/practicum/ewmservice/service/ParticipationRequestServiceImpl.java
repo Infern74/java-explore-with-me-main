@@ -61,8 +61,8 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         }
 
         // Проверка лимита участников
-        if (event.getParticipantLimit() > 0 &&
-                event.getConfirmedRequests() >= event.getParticipantLimit()) {
+        Long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+        if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
             throw new ConflictException("Event has reached participant limit");
         }
 
@@ -71,11 +71,8 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         request.setRequester(user);
         request.setCreated(LocalDateTime.now());
 
-
         if (!event.getRequestModeration() || event.getParticipantLimit() == 0) {
             request.setStatus(RequestStatus.CONFIRMED);
-            event.setConfirmedRequests(event.getConfirmedRequests() + 1);
-            eventRepository.save(event);
         } else {
             request.setStatus(RequestStatus.PENDING);
         }
@@ -94,14 +91,16 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
             throw new ValidationException("User can only cancel their own requests");
         }
 
+        RequestStatus oldStatus = request.getStatus();
         request.setStatus(RequestStatus.CANCELED);
         ParticipationRequest updatedRequest = requestRepository.save(request);
 
         // Если заявка была подтверждена, уменьшаем счетчик подтвержденных заявок
-        if (request.getStatus() == RequestStatus.CONFIRMED) {
+        if (oldStatus == RequestStatus.CONFIRMED) {
+            // Обновляем счетчик через репозиторий событий
             Event event = request.getEvent();
-            event.setConfirmedRequests(event.getConfirmedRequests() - 1);
-            eventRepository.save(event);
+            Long confirmedCount = requestRepository.countByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED);
+            // Мы не обновляем событие напрямую, так как confirmedRequests вычисляется динамически
         }
 
         return ParticipationRequestMapper.toParticipationRequestDto(updatedRequest);
@@ -139,21 +138,21 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         }
 
         // Проверка лимита участников
-        if (event.getParticipantLimit() > 0 &&
-                event.getConfirmedRequests() >= event.getParticipantLimit()) {
+        Long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+        if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
             throw new ConflictException("Event has reached participant limit");
+        }
+
+        if (request.getStatus() != RequestStatus.PENDING) {
+            throw new ConflictException("Request must be in PENDING status");
         }
 
         request.setStatus(RequestStatus.CONFIRMED);
         ParticipationRequest confirmedRequest = requestRepository.save(request);
 
-        // Увеличиваем счетчик подтвержденных заявок
-        event.setConfirmedRequests(event.getConfirmedRequests() + 1);
-        eventRepository.save(event);
-
-        // Если достигнут лимит, отклоняем все оставшиеся заявки
-        if (event.getParticipantLimit() > 0 &&
-                event.getConfirmedRequests() >= event.getParticipantLimit()) {
+        // Проверяем, не достигнут ли лимит после подтверждения
+        confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+        if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
             rejectPendingRequests(eventId);
         }
 
@@ -175,6 +174,10 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
 
         if (!request.getEvent().getId().equals(eventId)) {
             throw new ValidationException("Request doesn't belong to this event");
+        }
+
+        if (request.getStatus() != RequestStatus.PENDING) {
+            throw new ConflictException("Request must be in PENDING status");
         }
 
         request.setStatus(RequestStatus.REJECTED);

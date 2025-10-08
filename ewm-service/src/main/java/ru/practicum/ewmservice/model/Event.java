@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 
 @Data
@@ -60,7 +61,17 @@ public class Event {
 
     private Boolean requestModeration = true;
 
-    private Long views = 0L;
+    // Метод для получения confirmedRequests через репозиторий
+    @Transient
+    public Long getConfirmedRequests() {
+        // Это поле будет вычисляться в сервисе через репозиторий
+        return 0L;
+    }
 
-    private Long confirmedRequests = 0L;
+    // Метод для получения views через статистику
+    @Transient
+    public Long getViews() {
+        // Это поле будет вычисляться в сервисе через stats service
+        return 0L;
+    }
 }

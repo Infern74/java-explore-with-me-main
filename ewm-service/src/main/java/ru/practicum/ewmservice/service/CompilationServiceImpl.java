@@ -27,6 +27,7 @@ public class CompilationServiceImpl implements CompilationService {
 
     private final CompilationRepository compilationRepository;
     private final EventRepository eventRepository;
+    private final CompilationMapper compilationMapper;
 
     @Override
     @Transactional
@@ -45,7 +46,7 @@ public class CompilationServiceImpl implements CompilationService {
         }
 
         Compilation savedCompilation = compilationRepository.save(compilation);
-        return CompilationMapper.toCompilationDto(savedCompilation);
+        return compilationMapper.toCompilationDto(savedCompilation);
     }
 
     @Override
@@ -78,7 +79,7 @@ public class CompilationServiceImpl implements CompilationService {
         }
 
         Compilation updatedCompilation = compilationRepository.save(compilation);
-        return CompilationMapper.toCompilationDto(updatedCompilation);
+        return compilationMapper.toCompilationDto(updatedCompilation);
     }
 
     @Override
@@ -94,7 +95,7 @@ public class CompilationServiceImpl implements CompilationService {
         List<Compilation> compilations = compilationRepository.findCompilations(pinned, pageable);
 
         return compilations.stream()
-                .map(CompilationMapper::toCompilationDto)
+                .map(compilationMapper::toCompilationDto)
                 .collect(Collectors.toList());
     }
 
@@ -102,7 +103,7 @@ public class CompilationServiceImpl implements CompilationService {
     public CompilationDto getCompilationById(Long compId) {
         Compilation compilation = compilationRepository.findById(compId)
                 .orElseThrow(() -> new NotFoundException("Compilation with id=" + compId + " not found"));
-        return CompilationMapper.toCompilationDto(compilation);
+        return compilationMapper.toCompilationDto(compilation);
     }
 
     private void validateCompilationTitle(String title) {
