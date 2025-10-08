@@ -8,11 +8,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewmservice.dto.EventFullDto;
 import ru.practicum.ewmservice.dto.EventShortDto;
+import ru.practicum.ewmservice.dto.NewEventDto;
+import ru.practicum.ewmservice.dto.UpdateEventUserRequest;
 import ru.practicum.ewmservice.exception.ConflictException;
 import ru.practicum.ewmservice.exception.NotFoundException;
 import ru.practicum.ewmservice.exception.ValidationException;
 import ru.practicum.ewmservice.mapper.EventMapper;
-import ru.practicum.ewmservice.model.*;
+import ru.practicum.ewmservice.model.Category;
+import ru.practicum.ewmservice.model.Event;
+import ru.practicum.ewmservice.model.EventState;
+import ru.practicum.ewmservice.model.User;
 import ru.practicum.ewmservice.repository.CategoryRepository;
 import ru.practicum.ewmservice.repository.EventRepository;
 import ru.practicum.ewmservice.repository.UserRepository;
@@ -46,30 +51,30 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
     @Override
     @Transactional
-    public EventFullDto createEvent(Long userId, EventFullDto eventDto) {
+    public EventFullDto createEvent(Long userId, NewEventDto newEventDto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User with id=" + userId + " not found"));
-        Category category = categoryRepository.findById(eventDto.getCategory().getId())
-                .orElseThrow(() -> new NotFoundException("Category with id=" + eventDto.getCategory().getId() + " not found"));
+        Category category = categoryRepository.findById(newEventDto.getCategory())
+                .orElseThrow(() -> new NotFoundException("Category with id=" + newEventDto.getCategory() + " not found"));
 
-        // Проверка даты события (не менее чем за 2 часа от текущего момента)
-        if (eventDto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
+        // Валидация даты события (не менее чем за 2 часа от текущего момента)
+        if (newEventDto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
             throw new ValidationException("Event date must be at least 2 hours from now");
         }
 
         Event event = new Event();
-        event.setTitle(eventDto.getTitle());
-        event.setAnnotation(eventDto.getAnnotation());
-        event.setDescription(eventDto.getDescription());
+        event.setTitle(newEventDto.getTitle());
+        event.setAnnotation(newEventDto.getAnnotation());
+        event.setDescription(newEventDto.getDescription());
         event.setCategory(category);
         event.setInitiator(user);
-        event.setEventDate(eventDto.getEventDate());
+        event.setEventDate(newEventDto.getEventDate());
         event.setCreatedOn(LocalDateTime.now());
         event.setState(EventState.PENDING);
-        event.setLocation(eventDto.getLocation());
-        event.setPaid(eventDto.getPaid() != null ? eventDto.getPaid() : false);
-        event.setParticipantLimit(eventDto.getParticipantLimit() != null ? eventDto.getParticipantLimit() : 0);
-        event.setRequestModeration(eventDto.getRequestModeration() != null ? eventDto.getRequestModeration() : true);
+        event.setLocation(newEventDto.getLocation());
+        event.setPaid(newEventDto.getPaid() != null ? newEventDto.getPaid() : false);
+        event.setParticipantLimit(newEventDto.getParticipantLimit() != null ? newEventDto.getParticipantLimit() : 0);
+        event.setRequestModeration(newEventDto.getRequestModeration() != null ? newEventDto.getRequestModeration() : true);
         event.setViews(0L);
         event.setConfirmedRequests(0L);
 
@@ -87,7 +92,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
     @Override
     @Transactional
-    public EventFullDto updateEvent(Long userId, Long eventId, EventFullDto eventDto) {
+    public EventFullDto updateEvent(Long userId, Long eventId, UpdateEventUserRequest updateEventUserRequest) {
         Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found for user=" + userId));
 
@@ -96,33 +101,46 @@ public class PrivateEventServiceImpl implements PrivateEventService {
             throw new ConflictException("Only pending or canceled events can be changed");
         }
 
+        // Валидация даты события при обновлении
+        if (updateEventUserRequest.getEventDate() != null &&
+                updateEventUserRequest.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
+            throw new ValidationException("Event date must be at least 2 hours from now");
+        }
+
+        // Валидация лимита участников
+        if (updateEventUserRequest.getParticipantLimit() != null && updateEventUserRequest.getParticipantLimit() < 0) {
+            throw new ValidationException("Participant limit cannot be negative");
+        }
+
         // Обновление полей, если они предоставлены
-        if (eventDto.getTitle() != null) {
-            event.setTitle(eventDto.getTitle());
+        if (updateEventUserRequest.getTitle() != null && !updateEventUserRequest.getTitle().isBlank()) {
+            event.setTitle(updateEventUserRequest.getTitle());
         }
-        if (eventDto.getAnnotation() != null) {
-            event.setAnnotation(eventDto.getAnnotation());
+        if (updateEventUserRequest.getAnnotation() != null && !updateEventUserRequest.getAnnotation().isBlank()) {
+            event.setAnnotation(updateEventUserRequest.getAnnotation());
         }
-        if (eventDto.getDescription() != null) {
-            event.setDescription(eventDto.getDescription());
+        if (updateEventUserRequest.getDescription() != null && !updateEventUserRequest.getDescription().isBlank()) {
+            event.setDescription(updateEventUserRequest.getDescription());
         }
-        if (eventDto.getCategory() != null) {
-            Category category = categoryRepository.findById(eventDto.getCategory().getId())
-                    .orElseThrow(() -> new NotFoundException("Category with id=" + eventDto.getCategory().getId() + " not found"));
+        if (updateEventUserRequest.getCategory() != null) {
+            Category category = categoryRepository.findById(updateEventUserRequest.getCategory())
+                    .orElseThrow(() -> new NotFoundException("Category with id=" + updateEventUserRequest.getCategory() + " not found"));
             event.setCategory(category);
         }
-        if (eventDto.getEventDate() != null) {
-            // Проверка даты события (не менее чем за 2 часа от текущего момента)
-            if (eventDto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
-                throw new ValidationException("Event date must be at least 2 hours from now");
-            }
-            event.setEventDate(eventDto.getEventDate());
+        if (updateEventUserRequest.getEventDate() != null) {
+            event.setEventDate(updateEventUserRequest.getEventDate());
         }
-        if (eventDto.getPaid() != null) {
-            event.setPaid(eventDto.getPaid());
+        if (updateEventUserRequest.getLocation() != null) {
+            event.setLocation(updateEventUserRequest.getLocation());
         }
-        if (eventDto.getParticipantLimit() != null) {
-            event.setParticipantLimit(eventDto.getParticipantLimit());
+        if (updateEventUserRequest.getPaid() != null) {
+            event.setPaid(updateEventUserRequest.getPaid());
+        }
+        if (updateEventUserRequest.getParticipantLimit() != null) {
+            event.setParticipantLimit(updateEventUserRequest.getParticipantLimit());
+        }
+        if (updateEventUserRequest.getRequestModeration() != null) {
+            event.setRequestModeration(updateEventUserRequest.getRequestModeration());
         }
 
         // Если событие было отменено, переводим в состояние ожидания модерации

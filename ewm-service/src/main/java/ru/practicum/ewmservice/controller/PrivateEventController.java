@@ -5,10 +5,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewmservice.dto.EventFullDto;
 import ru.practicum.ewmservice.dto.EventShortDto;
+import ru.practicum.ewmservice.dto.NewEventDto;
+import ru.practicum.ewmservice.dto.UpdateEventUserRequest;
 import ru.practicum.ewmservice.service.EventService;
 import ru.practicum.ewmservice.service.PrivateEventService;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Positive;
+import javax.validation.constraints.PositiveOrZero;
 import java.util.List;
 
 @RestController
@@ -22,16 +26,16 @@ public class PrivateEventController {
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public List<EventShortDto> getUserEvents(@PathVariable Long userId,
-                                             @RequestParam(defaultValue = "0") Integer from,
-                                             @RequestParam(defaultValue = "10") Integer size) {
+                                             @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
+                                             @RequestParam(defaultValue = "10") @Positive Integer size) {
         return privateEventService.getUserEvents(userId, from, size);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public EventFullDto createEvent(@PathVariable Long userId,
-                                    @Valid @RequestBody EventFullDto eventDto) {
-        return privateEventService.createEvent(userId, eventDto);
+                                    @Valid @RequestBody NewEventDto newEventDto) {
+        return privateEventService.createEvent(userId, newEventDto);
     }
 
     @GetMapping("/{eventId}")
@@ -45,7 +49,7 @@ public class PrivateEventController {
     @ResponseStatus(HttpStatus.OK)
     public EventFullDto updateEvent(@PathVariable Long userId,
                                     @PathVariable Long eventId,
-                                    @Valid @RequestBody EventFullDto eventDto) {
-        return privateEventService.updateEvent(userId, eventId, eventDto);
+                                    @Valid @RequestBody UpdateEventUserRequest updateEventUserRequest) {
+        return privateEventService.updateEvent(userId, eventId, updateEventUserRequest);
     }
 }

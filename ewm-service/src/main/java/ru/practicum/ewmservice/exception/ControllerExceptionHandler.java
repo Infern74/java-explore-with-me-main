@@ -3,11 +3,15 @@ package ru.practicum.ewmservice.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import jakarta.servlet.http.HttpServletRequest;
+import javax.validation.ConstraintViolationException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
@@ -37,8 +41,28 @@ public class ControllerExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorMessage handleMethodArgumentNotValidException(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        log.error("MethodArgumentNotValidException: {}", ex.getMessage());
-        return new ErrorMessage(HttpStatus.BAD_REQUEST.value(), "Validation failed", request.getRequestURI());
+        List<String> errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.toList());
+
+        String errorMessage = "Validation failed: " + String.join("; ", errors);
+        log.error("MethodArgumentNotValidException: {}", errorMessage);
+
+        return new ErrorMessage(HttpStatus.BAD_REQUEST.value(), errorMessage, request.getRequestURI());
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorMessage handleConstraintViolationException(ConstraintViolationException ex, HttpServletRequest request) {
+        log.error("ConstraintViolationException: {}", ex.getMessage());
+        return new ErrorMessage(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), request.getRequestURI());
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorMessage handleMissingServletRequestParameterException(MissingServletRequestParameterException ex, HttpServletRequest request) {
+        log.error("MissingServletRequestParameterException: {}", ex.getMessage());
+        return new ErrorMessage(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), request.getRequestURI());
     }
 
     @ExceptionHandler(Exception.class)
