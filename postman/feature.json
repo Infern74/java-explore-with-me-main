@@ -294,7 +294,7 @@
 					}
 				},
 				"url": {
-					"raw": "http://localhost:8080/users/138/ratings/events/1",
+					"raw": "http://localhost:8080/users/138/ratings/events/107",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -305,7 +305,7 @@
 						"138",
 						"ratings",
 						"events",
-						"1"
+						"107"
 					]
 				}
 			},
@@ -346,7 +346,7 @@
 					}
 				},
 				"url": {
-					"raw": "http://localhost:8080/users/137/ratings/events/1",
+					"raw": "http://localhost:8080/users/137/ratings/events/107",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -357,7 +357,7 @@
 						"137",
 						"ratings",
 						"events",
-						"1"
+						"107"
 					]
 				}
 			},
@@ -398,7 +398,7 @@
 					}
 				},
 				"url": {
-					"raw": "http://localhost:8080/users/138/ratings/events/1",
+					"raw": "http://localhost:8080/users/138/ratings/events/107",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -409,7 +409,7 @@
 						"138",
 						"ratings",
 						"events",
-						"1"
+						"107"
 					]
 				}
 			},
@@ -444,7 +444,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://localhost:8080/ratings/events/1",
+					"raw": "http://localhost:8080/ratings/events/107",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -453,7 +453,7 @@
 					"path": [
 						"ratings",
 						"events",
-						"1"
+						"107"
 					]
 				}
 			},
