@@ -88,13 +88,17 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
 
     @Override
     public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
+        log.info("Getting requests for event {} by user {}", eventId, userId);
+
+        // Проверяем, что событие существует и пользователь является инициатором
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found"));
 
         if (!event.getInitiator().getId().equals(userId)) {
-            throw new ValidationException("Only event initiator can view event requests");
+            throw new ValidationException("User is not the initiator of this event");
         }
 
+        // Возвращаем все заявки на участие в событии
         return requestRepository.findByEventId(eventId).stream()
                 .map(ParticipationRequestMapper::toParticipationRequestDto)
                 .collect(Collectors.toList());

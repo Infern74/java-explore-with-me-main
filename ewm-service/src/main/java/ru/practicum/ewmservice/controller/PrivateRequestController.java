@@ -37,7 +37,6 @@ public class PrivateRequestController {
         return requestService.cancelRequest(userId, requestId);
     }
 
-    // ВАЖНО: Добавляем недостающий метод для массового обновления статусов заявок
     @PatchMapping("/events/{eventId}/requests")
     @ResponseStatus(HttpStatus.OK)
     public EventRequestStatusUpdateResult updateRequestStatus(
@@ -45,5 +44,13 @@ public class PrivateRequestController {
             @PathVariable Long eventId,
             @RequestBody EventRequestStatusUpdateRequest request) {
         return requestService.updateRequestStatus(userId, eventId, request);
+    }
+
+    @GetMapping("/events/{eventId}/requests")
+    @ResponseStatus(HttpStatus.OK)
+    public List<ParticipationRequestDto> getEventRequests(
+            @PathVariable Long userId,
+            @PathVariable Long eventId) {
+        return requestService.getEventRequests(userId, eventId);
     }
 }
