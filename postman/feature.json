@@ -1,0 +1,522 @@
+{
+	"info": {
+		"_postman_id": "fe65a204-7e6c-40e7-a157-9a9142cc3e97",
+		"name": "Event Ratings Tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "42764075"
+	},
+	"item": [
+		{
+			"name": "Создание первого пользователя",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response has user ID\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.id).to.be.a('number');\r",
+							"    pm.collectionVariables.set(\"userOneId\", jsonData.id);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\": \"User One\",\r\n    \"email\": \"user1@example.com\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/admin/users",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"admin",
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Создание второго пользователя",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response has user ID\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.id).to.be.a('number');\r",
+							"    pm.collectionVariables.set(\"userTwoId\", jsonData.id);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\": \"User Two\",\r\n    \"email\": \"user2@example.com\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/admin/users",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"admin",
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Создание категории",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Category created successfully\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.name).to.eql(\"Concerts\");\r",
+							"    pm.collectionVariables.set(\"categoryId\", jsonData.id);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\": \"Concerts\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/admin/categories",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"admin",
+						"categories"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Создание события от имени первого пользователя",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Event created in PENDING state\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.state).to.eql(\"PENDING\");\r",
+							"    pm.collectionVariables.set(\"eventId\", jsonData.id);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"annotation\": \"A great concert event for all music lovers\",\r\n    \"category\": 1,\r\n    \"description\": \"Detailed description of the amazing concert event with multiple performers.\",\r\n    \"eventDate\": \"2025-12-15 20:00:00\",\r\n    \"location\": {\r\n        \"lat\": 55.7558,\r\n        \"lon\": 37.6173\r\n    },\r\n    \"paid\": true,\r\n    \"participantLimit\": 100,\r\n    \"requestModeration\": true,\r\n    \"title\": \"Annual Music Festival 2024\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/users/1/events",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"users",
+						"1",
+						"events"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Публикация события администратором",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Event is published\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.state).to.eql(\"PUBLISHED\");\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"stateAction\": \"PUBLISH_EVENT\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/admin/events/1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"admin",
+						"events",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Поставить лайк событию (вторым пользователем)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Like was saved correctly\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.isLike).to.be.true;\r",
+							"    pm.expect(jsonData.userId).to.eql(2);\r",
+							"    pm.expect(jsonData.eventId).to.eql(1);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"isLike\": true\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/users/2/ratings/events/1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"users",
+						"2",
+						"ratings",
+						"events",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Попытка оценить свое собственное событие (должна вернуть ошибку)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 409\", function () {\r",
+							"    pm.response.to.have.status(409);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Error message about self-rating\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.message).to.include(\"own event\");\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"isLike\": true\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/users/1/ratings/events/1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"users",
+						"1",
+						"ratings",
+						"events",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Изменить оценку с лайка на дизлайк",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Rating updated to dislike\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.isLike).to.be.false;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"isLike\": false\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/users/2/ratings/events/1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"users",
+						"2",
+						"ratings",
+						"events",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Получить статистику рейтинга для события",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Rating stats are correct\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData.eventId).to.eql(1);\r",
+							"    pm.expect(jsonData.likes).to.be.a('number');\r",
+							"    pm.expect(jsonData.dislikes).to.be.a('number');\r",
+							"    pm.expect(jsonData.rating).to.eql(jsonData.likes - jsonData.dislikes);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/ratings/events/1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"ratings",
+						"events",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Получить топ событий по рейтингу",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Returns list of top events\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    pm.expect(jsonData).to.be.an('array');\r",
+							"    // Если есть элементы, проверяем структуру первого\r",
+							"    if (jsonData.length > 0) {\r",
+							"        pm.expect(jsonData[0]).to.have.property('eventId');\r",
+							"        pm.expect(jsonData[0]).to.have.property('rating');\r",
+							"    }\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/ratings/events/top?from=0&size=10",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"ratings",
+						"events",
+						"top"
+					],
+					"query": [
+						{
+							"key": "from",
+							"value": "0"
+						},
+						{
+							"key": "size",
+							"value": "10"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "userOneId",
+			"value": ""
+		},
+		{
+			"key": "userTwoId",
+			"value": ""
+		},
+		{
+			"key": "categoryId",
+			"value": ""
+		},
+		{
+			"key": "eventId",
+			"value": ""
+		}
+	]
+}
