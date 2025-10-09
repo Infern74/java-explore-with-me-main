@@ -1,0 +1,44 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5433/ewm
+    username: praktikum
+    password: praktikum
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        show_sql: false
+        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+    show-sql: false
+  sql:
+    init:
+      platform: postgresql
+      mode: always
+  task:
+    execution:
+      pool:
+        core-size: 5
+        max-size: 10
+        queue-capacity: 100
+
+stats:
+  service:
+    url: http://localhost:9090
+
+logging:
+  level:
+    ru.practicum.ewmservice: INFO
+    ru.practicum.ewmservice.service.ParticipationRequestServiceImpl: DEBUG
+    ru.practicum.ewmservice.service.StatsIntegrationService: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.web: WARN

@@ -9,6 +9,7 @@ import ru.practicum.dto.ViewStats;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -36,12 +37,12 @@ public class StatsClientImpl implements StatsClient {
     public List<ViewStats> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("start", start.format(formatter));
+        parameters.put("end", end.format(formatter));
+        parameters.put("unique", unique);
+
         String uri = serverUrl + "/stats?start={start}&end={end}&unique={unique}";
-        Map<String, Object> parameters = Map.of(
-                "start", start.format(formatter),
-                "end", end.format(formatter),
-                "unique", unique
-        );
 
         if (uris != null && !uris.isEmpty()) {
             uri += "&uris={uris}";

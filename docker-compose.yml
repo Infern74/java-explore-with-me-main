@@ -26,6 +26,34 @@ services:
     networks:
       - explore-with-me
 
+  ewm-db:
+    image: postgres:16.1
+    container_name: ewm-db
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_DB=ewm
+      - POSTGRES_USER=praktikum
+      - POSTGRES_PASSWORD=praktikum
+    networks:
+      - explore-with-me
+
+  ewm-service:
+    build: ewm-service/
+    container_name: ewm-service
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-db:5432/ewm
+      - SPRING_DATASOURCE_USERNAME=praktikum
+      - SPRING_DATASOURCE_PASSWORD=praktikum
+      - STATS_SERVICE_URL=http://stats-server:9090
+    depends_on:
+      - ewm-db
+      - stats-server
+    networks:
+      - explore-with-me
+
 networks:
   explore-with-me:
     driver: bridge
