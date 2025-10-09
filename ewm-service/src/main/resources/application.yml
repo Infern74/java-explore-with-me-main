@@ -39,5 +39,6 @@ logging:
     ru.practicum.ewmservice: INFO
     ru.practicum.ewmservice.service.ParticipationRequestServiceImpl: DEBUG
     ru.practicum.ewmservice.service.StatsIntegrationService: DEBUG
-    org.hibernate.SQL: WARN
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     org.springframework.web: WARN

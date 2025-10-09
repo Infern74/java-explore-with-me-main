@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.ewmservice.dto.EventRequestStatusUpdateRequest;
+import ru.practicum.ewmservice.dto.EventRequestStatusUpdateResult;
 import ru.practicum.ewmservice.dto.ParticipationRequestDto;
 import ru.practicum.ewmservice.exception.ConflictException;
 import ru.practicum.ewmservice.exception.NotFoundException;
@@ -16,6 +18,7 @@ import ru.practicum.ewmservice.repository.ParticipationRequestRepository;
 import ru.practicum.ewmservice.repository.UserRepository;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -148,23 +151,20 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
     }
 
     private void validateRequestCreation(Long userId, Event event) {
-        // Инициатор события не может подать заявку на участие
         if (event.getInitiator().getId().equals(userId)) {
             throw new ConflictException("Event initiator cannot create request for their own event");
         }
 
-        // Нельзя участвовать в неопубликованном событии
         if (event.getState() != EventState.PUBLISHED) {
             throw new ConflictException("Cannot participate in unpublished event");
         }
 
-        // Проверяем, не подавал ли пользователь уже заявку
         if (requestRepository.findByEventIdAndRequesterId(event.getId(), userId).isPresent()) {
             throw new ConflictException("Request from user=" + userId + " for event=" + event.getId() + " already exists");
         }
 
-        // Проверяем лимит участников (только если требуется модерация)
-        if (event.getRequestModeration() && event.getParticipantLimit() > 0) {
+        // Проверяем лимит участников
+        if (event.getParticipantLimit() > 0) {
             Long confirmedCount = requestRepository.countByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED);
             if (confirmedCount >= event.getParticipantLimit()) {
                 throw new ConflictException("Event has reached participant limit");
@@ -220,5 +220,55 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         if (!userRepository.existsById(userId)) {
             throw new NotFoundException("User with id=" + userId + " not found");
         }
+    }
+
+    @Override
+    @Transactional
+    public EventRequestStatusUpdateResult updateRequestStatus(Long userId, Long eventId,
+                                                              EventRequestStatusUpdateRequest request) {
+        log.info("Updating request status: userId={}, eventId={}, request={}", userId, eventId, request);
+
+        Event event = getEventAndValidateInitiator(userId, eventId);
+        List<ParticipationRequest> requestsToUpdate = requestRepository.findByIdIn(request.getRequestIds());
+
+        List<ParticipationRequestDto> confirmed = new ArrayList<>();
+        List<ParticipationRequestDto> rejected = new ArrayList<>();
+
+        // Проверяем лимит участников
+        Long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+        boolean limitReached = event.getParticipantLimit() > 0 &&
+                confirmedCount >= event.getParticipantLimit();
+
+        if (limitReached && "CONFIRMED".equals(request.getStatus())) {
+            throw new ConflictException("Event has reached participant limit");
+        }
+
+        for (ParticipationRequest participationRequest : requestsToUpdate) {
+            if (!participationRequest.getEvent().getId().equals(eventId)) {
+                throw new ValidationException("Request doesn't belong to this event");
+            }
+
+            if (participationRequest.getStatus() != RequestStatus.PENDING) {
+                throw new ConflictException("Request must be in PENDING status");
+            }
+
+            if ("CONFIRMED".equals(request.getStatus())) {
+                if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
+                    // Лимит достигнут - отклоняем оставшиеся заявки
+                    participationRequest.setStatus(RequestStatus.REJECTED);
+                    rejected.add(ParticipationRequestMapper.toParticipationRequestDto(participationRequest));
+                } else {
+                    participationRequest.setStatus(RequestStatus.CONFIRMED);
+                    confirmed.add(ParticipationRequestMapper.toParticipationRequestDto(participationRequest));
+                    confirmedCount++;
+                }
+            } else if ("REJECTED".equals(request.getStatus())) {
+                participationRequest.setStatus(RequestStatus.REJECTED);
+                rejected.add(ParticipationRequestMapper.toParticipationRequestDto(participationRequest));
+            }
+        }
+
+        requestRepository.saveAll(requestsToUpdate);
+        return new EventRequestStatusUpdateResult(confirmed, rejected);
     }
 }

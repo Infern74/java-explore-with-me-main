@@ -3,7 +3,6 @@ package ru.practicum.ewmservice.service;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import ru.practicum.dto.EndpointHit;
 import ru.practicum.dto.ViewStats;
@@ -19,25 +18,20 @@ import java.util.List;
 public class StatsIntegrationService {
     private final StatsClient statsClient;
 
-    private String getClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            // Берем первый IP из списка, если их несколько
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
-    }
-
     public List<ViewStats> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
         try {
-            return statsClient.getStats(start, end, uris, unique);
+            log.debug("Requesting stats from stats service: start={}, end={}, uris={}, unique={}",
+                    start, end, uris, unique);
+
+            List<ViewStats> stats = statsClient.getStats(start, end, uris, unique);
+            log.debug("Received stats: {}", stats);
+            return stats;
         } catch (Exception e) {
-            log.error("Failed to get stats from stats service: {}", e.getMessage());
-            return Collections.emptyList(); // Возвращаем пустой список в случае ошибки
+            log.error("Failed to get stats from stats service: {}", e.getMessage(), e);
+            return Collections.emptyList();
         }
     }
 
-    @Async
     public void saveHit(HttpServletRequest request) {
         try {
             EndpointHit hit = new EndpointHit();
@@ -45,9 +39,12 @@ public class StatsIntegrationService {
             hit.setUri(request.getRequestURI());
             hit.setIp(getClientIp(request));
             hit.setTimestamp(LocalDateTime.now());
+
+            log.debug("Saving hit: {}", hit);
             statsClient.saveHit(hit);
+            log.debug("Hit saved successfully");
         } catch (Exception e) {
-            log.error("Failed to save hit to stats service: {}", e.getMessage());
+            log.error("Failed to save hit to stats service: {}", e.getMessage(), e);
         }
     }
 
@@ -57,12 +54,28 @@ public class StatsIntegrationService {
             LocalDateTime start = LocalDateTime.now().minusYears(1);
             LocalDateTime end = LocalDateTime.now().plusHours(1);
 
-            List<ViewStats> stats = statsClient.getStats(start, end, List.of(uri), true);
+            log.debug("Getting views for event {} with uri: {}", eventId, uri);
 
-            return stats.isEmpty() ? 0L : stats.get(0).getHits();
+            List<ViewStats> stats = getStats(start, end, List.of(uri), true);
+            log.debug("Stats for event {}: {}", eventId, stats);
+
+            if (stats == null || stats.isEmpty()) {
+                return 0L;
+            }
+
+            return stats.get(0).getHits();
         } catch (Exception e) {
-            log.warn("Failed to get views for event {}: {}", eventId, e.getMessage());
+            log.error("Failed to get views for event {}: {}", eventId, e.getMessage(), e);
             return 0L;
         }
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            String[] ips = xForwardedFor.split(",");
+            return ips[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

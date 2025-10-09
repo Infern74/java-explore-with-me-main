@@ -238,22 +238,26 @@ public class EventServiceImpl implements EventService {
                     .map(event -> "/events/" + event.getId())
                     .collect(Collectors.toList());
 
-            LocalDateTime start = LocalDateTime.of(2020, 1, 1, 0, 0);
+            // Используем более широкий диапазон дат
+            LocalDateTime start = LocalDateTime.now().minusYears(1);
             LocalDateTime end = LocalDateTime.now().plusYears(1);
 
+            log.debug("Getting views for events: uris={}", uris);
             List<ViewStats> stats = statsIntegrationService.getStats(start, end, uris, true);
+            log.debug("Received stats for {} events: {}", events.size(), stats);
 
             Map<Long, Long> views = new HashMap<>();
             for (ViewStats stat : stats) {
                 Long eventId = extractEventIdFromUri(stat.getUri());
                 if (eventId != null) {
                     views.put(eventId, stat.getHits());
+                    log.debug("Event {} has {} views", eventId, stat.getHits());
                 }
             }
 
             return views;
         } catch (Exception e) {
-            log.warn("Failed to get views from stats service: {}", e.getMessage());
+            log.error("Failed to get views from stats service: {}", e.getMessage(), e);
             return new HashMap<>();
         }
     }
