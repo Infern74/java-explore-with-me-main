@@ -42,10 +42,12 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/admin/users",
+					"raw": "http://localhost:8080/admin/users",
+					"protocol": "http",
 					"host": [
-						"{{baseUrl}}"
+						"localhost"
 					],
+					"port": "8080",
 					"path": [
 						"admin",
 						"users"
@@ -90,10 +92,12 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/admin/users",
+					"raw": "http://localhost:8080/admin/users",
+					"protocol": "http",
 					"host": [
-						"{{baseUrl}}"
+						"localhost"
 					],
+					"port": "8080",
 					"path": [
 						"admin",
 						"users"
@@ -138,10 +142,12 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/admin/categories",
+					"raw": "http://localhost:8080/admin/categories",
+					"protocol": "http",
 					"host": [
-						"{{baseUrl}}"
+						"localhost"
 					],
+					"port": "8080",
 					"path": [
 						"admin",
 						"categories"
@@ -186,10 +192,12 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/users/1/events",
+					"raw": "http://localhost:8080/users/1/events",
+					"protocol": "http",
 					"host": [
-						"{{baseUrl}}"
+						"localhost"
 					],
+					"port": "8080",
 					"path": [
 						"users",
 						"1",
@@ -234,10 +242,12 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/admin/events/1",
+					"raw": "http://localhost:8080/admin/events/1",
+					"protocol": "http",
 					"host": [
-						"{{baseUrl}}"
+						"localhost"
 					],
+					"port": "8080",
 					"path": [
 						"admin",
 						"events",
@@ -284,10 +294,12 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/users/2/ratings/events/1",
+					"raw": "http://localhost:8080/users/2/ratings/events/1",
+					"protocol": "http",
 					"host": [
-						"{{baseUrl}}"
+						"localhost"
 					],
+					"port": "8080",
 					"path": [
 						"users",
 						"2",
@@ -334,10 +346,12 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/users/1/ratings/events/1",
+					"raw": "http://localhost:8080/users/1/ratings/events/1",
+					"protocol": "http",
 					"host": [
-						"{{baseUrl}}"
+						"localhost"
 					],
+					"port": "8080",
 					"path": [
 						"users",
 						"1",
@@ -384,10 +398,12 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/users/2/ratings/events/1",
+					"raw": "http://localhost:8080/users/2/ratings/events/1",
+					"protocol": "http",
 					"host": [
-						"{{baseUrl}}"
+						"localhost"
 					],
+					"port": "8080",
 					"path": [
 						"users",
 						"2",
@@ -428,10 +444,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{baseUrl}}/ratings/events/1",
+					"raw": "http://localhost:8080/ratings/events/1",
+					"protocol": "http",
 					"host": [
-						"{{baseUrl}}"
+						"localhost"
 					],
+					"port": "8080",
 					"path": [
 						"ratings",
 						"events",
@@ -472,10 +490,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{baseUrl}}/ratings/events/top?from=0&size=10",
+					"raw": "http://localhost:8080/ratings/events/top?from=0&size=10",
+					"protocol": "http",
 					"host": [
-						"{{baseUrl}}"
+						"localhost"
 					],
+					"port": "8080",
 					"path": [
 						"ratings",
 						"events",
