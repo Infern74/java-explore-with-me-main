@@ -38,8 +38,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public void deleteCategory(Long catId) {
-        Category category = categoryRepository.findById(catId)
-                .orElseThrow(() -> new NotFoundException("Category with id=" + catId + " not found"));
+        Category category = getCategoryByIdOrThrow(catId);
 
         if (!eventRepository.findByCategoryId(catId).isEmpty()) {
             throw new ConflictException("Cannot delete category with linked events");
@@ -51,8 +50,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public CategoryDto updateCategory(Long catId, CategoryDto categoryDto) {
-        Category category = categoryRepository.findById(catId)
-                .orElseThrow(() -> new NotFoundException("Category with id=" + catId + " not found"));
+        Category category = getCategoryByIdOrThrow(catId);
 
         if (categoryRepository.existsByName(categoryDto.getName()) &&
                 !category.getName().equals(categoryDto.getName())) {
@@ -74,8 +72,12 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public CategoryDto getCategoryById(Long catId) {
-        Category category = categoryRepository.findById(catId)
-                .orElseThrow(() -> new NotFoundException("Category with id=" + catId + " not found"));
+        Category category = getCategoryByIdOrThrow(catId);
         return CategoryMapper.toCategoryDto(category);
+    }
+
+    private Category getCategoryByIdOrThrow(Long catId) {
+        return categoryRepository.findById(catId)
+                .orElseThrow(() -> new NotFoundException("Category with id=" + catId + " not found"));
     }
 }

@@ -43,10 +43,8 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
     @Override
     @Transactional
     public ParticipationRequestDto createRequest(Long userId, Long eventId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User with id=" + userId + " not found"));
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found"));
+        User user = getUserByIdOrThrow(userId);
+        Event event = getEventByIdOrThrow(eventId);
 
         validateRequestCreation(userId, event);
 
@@ -55,7 +53,6 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         request.setRequester(user);
         request.setCreated(LocalDateTime.now());
 
-        // Устанавливаем статус в зависимости от настроек события
         if (!event.getRequestModeration() || event.getParticipantLimit() == 0) {
             request.setStatus(RequestStatus.CONFIRMED);
         } else {
@@ -73,8 +70,7 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
     @Override
     @Transactional
     public ParticipationRequestDto cancelRequest(Long userId, Long requestId) {
-        ParticipationRequest request = requestRepository.findById(requestId)
-                .orElseThrow(() -> new NotFoundException("Request with id=" + requestId + " not found"));
+        ParticipationRequest request = getRequestByIdOrThrow(requestId);
 
         if (!request.getRequester().getId().equals(userId)) {
             throw new ValidationException("User can only cancel their own requests");
@@ -90,68 +86,15 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
     public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
         log.info("Getting requests for event {} by user {}", eventId, userId);
 
-        // Проверяем, что событие существует и пользователь является инициатором
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found"));
+        Event event = getEventByIdOrThrow(eventId);
 
         if (!event.getInitiator().getId().equals(userId)) {
             throw new ValidationException("User is not the initiator of this event");
         }
 
-        // Возвращаем все заявки на участие в событии
         return requestRepository.findByEventId(eventId).stream()
                 .map(ParticipationRequestMapper::toParticipationRequestDto)
                 .collect(Collectors.toList());
-    }
-
-    private void validateParticipantLimit(Event event) {
-        if (event.getParticipantLimit() > 0) {
-            Long confirmedCount = requestRepository.countByEventIdAndStatus(
-                    event.getId(), RequestStatus.CONFIRMED);
-            if (confirmedCount >= event.getParticipantLimit()) {
-                throw new ConflictException("Event participant limit reached");
-            }
-        }
-    }
-
-    @Override
-    @Transactional
-    public ParticipationRequestDto confirmRequest(Long userId, Long eventId, Long reqId) {
-        log.debug("Confirming request: userId={}, eventId={}, requestId={}", userId, eventId, reqId);
-
-        Event event = getEventAndValidateInitiator(userId, eventId);
-        validateParticipantLimit(event);
-        ParticipationRequest request = getRequestAndValidateEvent(reqId, eventId);
-
-        if (request.getStatus() != RequestStatus.PENDING) {
-            throw new ConflictException("Request must be in PENDING status");
-        }
-
-        Long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
-        if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
-            throw new ConflictException("Event has reached participant limit");
-        }
-
-        request.setStatus(RequestStatus.CONFIRMED);
-        ParticipationRequest confirmedRequest = requestRepository.save(request);
-
-        return ParticipationRequestMapper.toParticipationRequestDto(confirmedRequest);
-    }
-
-    @Override
-    @Transactional
-    public ParticipationRequestDto rejectRequest(Long userId, Long eventId, Long reqId) {
-        Event event = getEventAndValidateInitiator(userId, eventId);
-        ParticipationRequest request = getRequestAndValidateEvent(reqId, eventId);
-
-        if (request.getStatus() != RequestStatus.PENDING) {
-            throw new ConflictException("Request must be in PENDING status");
-        }
-
-        request.setStatus(RequestStatus.REJECTED);
-        ParticipationRequest rejectedRequest = requestRepository.save(request);
-
-        return ParticipationRequestMapper.toParticipationRequestDto(rejectedRequest);
     }
 
     private void validateRequestCreation(Long userId, Event event) {
@@ -167,7 +110,6 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
             throw new ConflictException("Request from user=" + userId + " for event=" + event.getId() + " already exists");
         }
 
-        // Проверяем лимит участников
         if (event.getParticipantLimit() > 0) {
             Long confirmedCount = requestRepository.countByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED);
             if (confirmedCount >= event.getParticipantLimit()) {
@@ -177,47 +119,13 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
     }
 
     private Event getEventAndValidateInitiator(Long userId, Long eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found"));
+        Event event = getEventByIdOrThrow(eventId);
 
         if (!event.getInitiator().getId().equals(userId)) {
             throw new ValidationException("Only event initiator can manage requests");
         }
 
         return event;
-    }
-
-    private ParticipationRequest getRequestAndValidateEvent(Long reqId, Long eventId) {
-        ParticipationRequest request = requestRepository.findById(reqId)
-                .orElseThrow(() -> new NotFoundException("Request with id=" + reqId + " not found"));
-
-        if (!request.getEvent().getId().equals(eventId)) {
-            throw new ValidationException("Request doesn't belong to this event");
-        }
-
-        return request;
-    }
-
-    private void checkAndRejectPendingRequestsIfNeeded(Event event) {
-        if (event.getParticipantLimit() == 0 || !event.getRequestModeration()) {
-            return;
-        }
-
-        Long confirmedCount = requestRepository.countByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED);
-
-        // Если лимит достигнут, отклоняем все оставшиеся заявки
-        if (confirmedCount >= event.getParticipantLimit()) {
-            List<ParticipationRequest> pendingRequests = requestRepository.findByEventId(event.getId()).stream()
-                    .filter(request -> request.getStatus() == RequestStatus.PENDING)
-                    .collect(Collectors.toList());
-
-            for (ParticipationRequest request : pendingRequests) {
-                request.setStatus(RequestStatus.REJECTED);
-                log.info("Rejected request {} for event {} due to participant limit", request.getId(), event.getId());
-            }
-
-            requestRepository.saveAll(pendingRequests);
-        }
     }
 
     private void checkUserExists(Long userId) {
@@ -238,7 +146,6 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         List<ParticipationRequestDto> confirmed = new ArrayList<>();
         List<ParticipationRequestDto> rejected = new ArrayList<>();
 
-        // Проверяем лимит участников
         Long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
         boolean limitReached = event.getParticipantLimit() > 0 &&
                 confirmedCount >= event.getParticipantLimit();
@@ -258,7 +165,6 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
 
             if ("CONFIRMED".equals(request.getStatus())) {
                 if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
-                    // Лимит достигнут - отклоняем оставшиеся заявки
                     participationRequest.setStatus(RequestStatus.REJECTED);
                     rejected.add(ParticipationRequestMapper.toParticipationRequestDto(participationRequest));
                 } else {
@@ -274,5 +180,20 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
 
         requestRepository.saveAll(requestsToUpdate);
         return new EventRequestStatusUpdateResult(confirmed, rejected);
+    }
+
+    private User getUserByIdOrThrow(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User with id=" + userId + " not found"));
+    }
+
+    private Event getEventByIdOrThrow(Long eventId) {
+        return eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found"));
+    }
+
+    private ParticipationRequest getRequestByIdOrThrow(Long requestId) {
+        return requestRepository.findById(requestId)
+                .orElseThrow(() -> new NotFoundException("Request with id=" + requestId + " not found"));
     }
 }

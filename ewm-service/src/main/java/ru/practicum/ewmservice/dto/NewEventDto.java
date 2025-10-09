@@ -1,12 +1,12 @@
 package ru.practicum.ewmservice.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.practicum.ewmservice.model.Location;
 
-import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
 
 @Data

@@ -1,12 +1,11 @@
 package ru.practicum.ewmservice.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewmservice.dto.CategoryDto;
 import ru.practicum.ewmservice.service.CategoryService;
-
-import jakarta.validation.Valid;
 
 @RestController
 @RequiredArgsConstructor

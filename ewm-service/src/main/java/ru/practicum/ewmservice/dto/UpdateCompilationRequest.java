@@ -1,10 +1,10 @@
 package ru.practicum.ewmservice.dto;
 
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import jakarta.validation.constraints.Size;
 import java.util.List;
 
 @Data

@@ -1,5 +1,6 @@
 package ru.practicum.ewmservice.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -9,7 +10,6 @@ import ru.practicum.ewmservice.dto.EventShortDto;
 import ru.practicum.ewmservice.service.EventService;
 import ru.practicum.ewmservice.service.StatsIntegrationService;
 
-import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.List;
 

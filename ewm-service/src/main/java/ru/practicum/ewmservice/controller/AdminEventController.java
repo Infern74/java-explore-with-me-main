@@ -1,5 +1,6 @@
 package ru.practicum.ewmservice.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -9,7 +10,6 @@ import ru.practicum.ewmservice.dto.UpdateEventAdminRequest;
 import ru.practicum.ewmservice.model.EventState;
 import ru.practicum.ewmservice.service.EventService;
 
-import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.List;
 

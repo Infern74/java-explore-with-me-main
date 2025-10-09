@@ -2,12 +2,14 @@ package ru.practicum.ewmservice.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
@@ -64,14 +66,25 @@ public class Event {
     // Метод для получения confirmedRequests через репозиторий
     @Transient
     public Long getConfirmedRequests() {
-        // Это поле будет вычисляться в сервисе через репозиторий
         return 0L;
     }
 
     // Метод для получения views через статистику
     @Transient
     public Long getViews() {
-        // Это поле будет вычисляться в сервисе через stats service
         return 0L;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Event)) return false;
+        Event event = (Event) o;
+        return id != null && id.equals(event.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
     }
 }

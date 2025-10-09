@@ -1,6 +1,7 @@
 package ru.practicum.ewmservice.service;
 
 import ru.practicum.ewmservice.dto.UserDto;
+
 import java.util.List;
 
 public interface UserService {

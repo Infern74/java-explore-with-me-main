@@ -68,76 +68,24 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     @Override
     @Transactional
     public EventFullDto createEvent(Long userId, NewEventDto newEventDto) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User with id=" + userId + " not found"));
-        Category category = categoryRepository.findById(newEventDto.getCategory())
-                .orElseThrow(() -> new NotFoundException("Category with id=" + newEventDto.getCategory() + " not found"));
+        User user = getUserByIdOrThrow(userId);
+        Category category = getCategoryByIdOrThrow(newEventDto.getCategory());
 
         validateEventFields(newEventDto);
 
-        // Проверка даты события (минимум 2 часа от текущего момента)
         if (newEventDto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
             throw new ValidationException("Event date must be at least 2 hours from now");
         }
 
-        Event event = new Event();
-        event.setTitle(newEventDto.getTitle().trim());
-        event.setAnnotation(newEventDto.getAnnotation().trim());
-        event.setDescription(newEventDto.getDescription().trim());
-        event.setCategory(category);
-        event.setInitiator(user);
-        event.setEventDate(newEventDto.getEventDate());
-        event.setCreatedOn(LocalDateTime.now());
-        event.setState(EventState.PENDING);
-        event.setLocation(newEventDto.getLocation());
-        event.setPaid(newEventDto.getPaid() != null ? newEventDto.getPaid() : false);
-        event.setParticipantLimit(newEventDto.getParticipantLimit() != null ? newEventDto.getParticipantLimit() : 0);
-        event.setRequestModeration(newEventDto.getRequestModeration() != null ? newEventDto.getRequestModeration() : true);
-
+        Event event = EventMapper.toEvent(newEventDto, user, category);
         Event savedEvent = eventRepository.save(event);
 
-        // Для нового события views и confirmedRequests будут 0
         return EventMapper.toEventFullDto(savedEvent, 0L, 0L);
-    }
-
-    private void validateEventFields(NewEventDto newEventDto) {
-        // Валидация аннотации
-        if (newEventDto.getAnnotation() == null || newEventDto.getAnnotation().trim().isEmpty()) {
-            throw new ValidationException("Annotation cannot be empty");
-        }
-        String annotation = newEventDto.getAnnotation().trim();
-        if (annotation.length() < 20 || annotation.length() > 2000) {
-            throw new ValidationException("Annotation must be between 20 and 2000 characters");
-        }
-
-        // Валидация описания
-        if (newEventDto.getDescription() == null || newEventDto.getDescription().trim().isEmpty()) {
-            throw new ValidationException("Description cannot be empty");
-        }
-        String description = newEventDto.getDescription().trim();
-        if (description.length() < 20 || description.length() > 7000) {
-            throw new ValidationException("Description must be between 20 and 7000 characters");
-        }
-
-        // Валидация заголовка
-        if (newEventDto.getTitle() == null || newEventDto.getTitle().trim().isEmpty()) {
-            throw new ValidationException("Title cannot be empty");
-        }
-        String title = newEventDto.getTitle().trim();
-        if (title.length() < 3 || title.length() > 120) {
-            throw new ValidationException("Title must be between 3 and 120 characters");
-        }
-
-        // Валидация лимита участников
-        if (newEventDto.getParticipantLimit() != null && newEventDto.getParticipantLimit() < 0) {
-            throw new ValidationException("Participant limit cannot be negative");
-        }
     }
 
     @Override
     public EventFullDto getUserEvent(Long userId, Long eventId) {
-        Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
-                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found for user=" + userId));
+        Event event = getEventByIdAndInitiatorIdOrThrow(eventId, userId);
 
         Long views = statsIntegrationService.getEventViews(eventId);
         Long confirmedRequests = requestRepository.getConfirmedRequestsCount(eventId);
@@ -147,21 +95,16 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     @Override
     @Transactional
     public EventFullDto updateEvent(Long userId, Long eventId, UpdateEventUserRequest updateEventUserRequest) {
-        Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
-                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found for user=" + userId));
+        Event event = getEventByIdAndInitiatorIdOrThrow(eventId, userId);
 
-        // Проверка, что событие можно редактировать
         if (event.getState() == EventState.PUBLISHED) {
             throw new ConflictException("Only pending or canceled events can be changed");
         }
 
-        // Валидация полей при обновлении
         validateUpdateEventFields(updateEventUserRequest);
 
-        // Обновление полей
         updateEventFields(event, updateEventUserRequest);
 
-        // Обработка stateAction
         if (updateEventUserRequest.getStateAction() != null) {
             if ("SEND_TO_REVIEW".equals(updateEventUserRequest.getStateAction())) {
                 event.setState(EventState.PENDING);
@@ -177,6 +120,51 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         Long views = statsIntegrationService.getEventViews(eventId);
         Long confirmedRequests = requestRepository.getConfirmedRequestsCount(eventId);
         return EventMapper.toEventFullDto(updatedEvent, views, confirmedRequests);
+    }
+
+    private User getUserByIdOrThrow(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User with id=" + userId + " not found"));
+    }
+
+    private Category getCategoryByIdOrThrow(Long categoryId) {
+        return categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new NotFoundException("Category with id=" + categoryId + " not found"));
+    }
+
+    private Event getEventByIdAndInitiatorIdOrThrow(Long eventId, Long userId) {
+        return eventRepository.findByIdAndInitiatorId(eventId, userId)
+                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found for user=" + userId));
+    }
+
+    private void validateEventFields(NewEventDto newEventDto) {
+        if (newEventDto.getAnnotation() == null || newEventDto.getAnnotation().trim().isEmpty()) {
+            throw new ValidationException("Annotation cannot be empty");
+        }
+        String annotation = newEventDto.getAnnotation().trim();
+        if (annotation.length() < 20 || annotation.length() > 2000) {
+            throw new ValidationException("Annotation must be between 20 and 2000 characters");
+        }
+
+        if (newEventDto.getDescription() == null || newEventDto.getDescription().trim().isEmpty()) {
+            throw new ValidationException("Description cannot be empty");
+        }
+        String description = newEventDto.getDescription().trim();
+        if (description.length() < 20 || description.length() > 7000) {
+            throw new ValidationException("Description must be between 20 and 7000 characters");
+        }
+
+        if (newEventDto.getTitle() == null || newEventDto.getTitle().trim().isEmpty()) {
+            throw new ValidationException("Title cannot be empty");
+        }
+        String title = newEventDto.getTitle().trim();
+        if (title.length() < 3 || title.length() > 120) {
+            throw new ValidationException("Title must be between 3 and 120 characters");
+        }
+
+        if (newEventDto.getParticipantLimit() != null && newEventDto.getParticipantLimit() < 0) {
+            throw new ValidationException("Participant limit cannot be negative");
+        }
     }
 
     private void validateUpdateEventFields(UpdateEventUserRequest updateRequest) {
@@ -231,8 +219,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
             event.setDescription(updateRequest.getDescription().trim());
         }
         if (updateRequest.getCategory() != null) {
-            Category category = categoryRepository.findById(updateRequest.getCategory())
-                    .orElseThrow(() -> new NotFoundException("Category with id=" + updateRequest.getCategory() + " not found"));
+            Category category = getCategoryByIdOrThrow(updateRequest.getCategory());
             event.setCategory(category);
         }
         if (updateRequest.getEventDate() != null) {

@@ -23,7 +23,10 @@ import ru.practicum.ewmservice.repository.EventSpecifications;
 import ru.practicum.ewmservice.repository.ParticipationRequestRepository;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -76,7 +79,6 @@ public class EventServiceImpl implements EventService {
                 })
                 .collect(Collectors.toList());
 
-        // Сортировка по просмотрам если требуется
         if ("VIEWS".equals(sort)) {
             result.sort(Comparator.comparing(EventShortDto::getViews).reversed());
         }
@@ -86,8 +88,7 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public EventFullDto getEventById(Long eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found"));
+        Event event = getEventByIdOrThrow(eventId);
 
         if (event.getState() != EventState.PUBLISHED) {
             throw new NotFoundException("Event with id=" + eventId + " is not published");
@@ -135,10 +136,8 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional
     public EventFullDto updateEventByAdmin(Long eventId, UpdateEventAdminRequest updateEventAdminRequest) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found"));
+        Event event = getEventByIdOrThrow(eventId);
 
-        // Проверка на публикацию/отклонение
         if (updateEventAdminRequest.getStateAction() != null) {
             if ("PUBLISH_EVENT".equals(updateEventAdminRequest.getStateAction())) {
                 if (event.getState() != EventState.PENDING) {
@@ -159,7 +158,6 @@ public class EventServiceImpl implements EventService {
             }
         }
 
-        // Обновление полей
         updateEventFields(event, updateEventAdminRequest);
 
         Event updatedEvent = eventRepository.save(event);
@@ -169,7 +167,11 @@ public class EventServiceImpl implements EventService {
         return EventMapper.toEventFullDto(updatedEvent, views, confirmedRequests);
     }
 
-    // Остальные методы остаются без изменений...
+    private Event getEventByIdOrThrow(Long eventId) {
+        return eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " not found"));
+    }
+
     private Pageable createPageable(Integer from, Integer size, String sort) {
         Sort sorting;
         if ("EVENT_DATE".equals(sort)) {
@@ -238,7 +240,6 @@ public class EventServiceImpl implements EventService {
                     .map(event -> "/events/" + event.getId())
                     .collect(Collectors.toList());
 
-            // Используем более широкий диапазон дат
             LocalDateTime start = LocalDateTime.now().minusYears(1);
             LocalDateTime end = LocalDateTime.now().plusYears(1);
 

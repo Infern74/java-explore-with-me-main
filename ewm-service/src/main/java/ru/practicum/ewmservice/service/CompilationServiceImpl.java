@@ -40,7 +40,6 @@ public class CompilationServiceImpl implements CompilationService {
 
         if (newCompilationDto.getEvents() != null && !newCompilationDto.getEvents().isEmpty()) {
             List<Event> events = eventRepository.findAllById(newCompilationDto.getEvents());
-            // Проверяем, что все события найдены
             if (events.size() != newCompilationDto.getEvents().size()) {
                 throw new NotFoundException("Some events not found");
             }
@@ -65,8 +64,7 @@ public class CompilationServiceImpl implements CompilationService {
     @Override
     @Transactional
     public CompilationDto updateCompilation(Long compId, UpdateCompilationRequest updateCompilationRequest) {
-        Compilation compilation = compilationRepository.findById(compId)
-                .orElseThrow(() -> new NotFoundException("Compilation with id=" + compId + " not found"));
+        Compilation compilation = getCompilationByIdOrThrow(compId);
 
         if (updateCompilationRequest.getTitle() != null) {
             validateCompilationTitle(updateCompilationRequest.getTitle());
@@ -79,7 +77,6 @@ public class CompilationServiceImpl implements CompilationService {
 
         if (updateCompilationRequest.getEvents() != null) {
             List<Event> events = eventRepository.findAllById(updateCompilationRequest.getEvents());
-            // Проверяем, что все события найдены
             if (events.size() != updateCompilationRequest.getEvents().size()) {
                 throw new NotFoundException("Some events not found");
             }
@@ -109,9 +106,13 @@ public class CompilationServiceImpl implements CompilationService {
 
     @Override
     public CompilationDto getCompilationById(Long compId) {
-        Compilation compilation = compilationRepository.findById(compId)
-                .orElseThrow(() -> new NotFoundException("Compilation with id=" + compId + " not found"));
+        Compilation compilation = getCompilationByIdOrThrow(compId);
         return compilationMapper.toCompilationDto(compilation);
+    }
+
+    private Compilation getCompilationByIdOrThrow(Long compId) {
+        return compilationRepository.findById(compId)
+                .orElseThrow(() -> new NotFoundException("Compilation with id=" + compId + " not found"));
     }
 
     private void validateCompilationTitle(String title) {
@@ -119,7 +120,7 @@ public class CompilationServiceImpl implements CompilationService {
             throw new ValidationException("Title cannot be empty");
         }
         String trimmedTitle = title.trim();
-        if (trimmedTitle.length() < 1 || trimmedTitle.length() > 50) {
+        if (trimmedTitle.isEmpty() || trimmedTitle.length() > 50) {
             throw new ValidationException("Title must be between 1 and 50 characters");
         }
     }

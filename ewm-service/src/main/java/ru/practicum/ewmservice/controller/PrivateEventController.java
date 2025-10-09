@@ -1,5 +1,8 @@
 package ru.practicum.ewmservice.controller;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -10,9 +13,6 @@ import ru.practicum.ewmservice.dto.UpdateEventUserRequest;
 import ru.practicum.ewmservice.service.EventService;
 import ru.practicum.ewmservice.service.PrivateEventService;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.PositiveOrZero;
 import java.util.List;
 
 @RestController

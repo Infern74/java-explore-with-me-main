@@ -3,7 +3,13 @@ package ru.practicum.ewmservice.mapper;
 import lombok.experimental.UtilityClass;
 import ru.practicum.ewmservice.dto.EventFullDto;
 import ru.practicum.ewmservice.dto.EventShortDto;
+import ru.practicum.ewmservice.dto.NewEventDto;
+import ru.practicum.ewmservice.model.Category;
 import ru.practicum.ewmservice.model.Event;
+import ru.practicum.ewmservice.model.EventState;
+import ru.practicum.ewmservice.model.User;
+
+import java.time.LocalDateTime;
 
 @UtilityClass
 public class EventMapper {
@@ -63,5 +69,27 @@ public class EventMapper {
         dto.setViews(views != null ? views : 0L);
         dto.setConfirmedRequests(confirmedRequests != null ? confirmedRequests : 0L);
         return dto;
+    }
+
+    public Event toEvent(NewEventDto newEventDto, User initiator, Category category) {
+        if (newEventDto == null) {
+            return null;
+        }
+
+        Event event = new Event();
+        event.setTitle(newEventDto.getTitle().trim());
+        event.setAnnotation(newEventDto.getAnnotation().trim());
+        event.setDescription(newEventDto.getDescription().trim());
+        event.setCategory(category);
+        event.setInitiator(initiator);
+        event.setEventDate(newEventDto.getEventDate());
+        event.setCreatedOn(LocalDateTime.now());
+        event.setState(EventState.PENDING);
+        event.setLocation(newEventDto.getLocation());
+        event.setPaid(newEventDto.getPaid() != null ? newEventDto.getPaid() : false);
+        event.setParticipantLimit(newEventDto.getParticipantLimit() != null ? newEventDto.getParticipantLimit() : 0);
+        event.setRequestModeration(newEventDto.getRequestModeration() != null ? newEventDto.getRequestModeration() : true);
+
+        return event;
     }
 }
