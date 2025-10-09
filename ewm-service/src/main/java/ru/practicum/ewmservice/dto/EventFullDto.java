@@ -36,4 +36,7 @@ public class EventFullDto {
     private Boolean requestModeration;
     private Long views;
     private Long confirmedRequests;
+    private Long likes;
+    private Long dislikes;
+    private Long rating;
 }
