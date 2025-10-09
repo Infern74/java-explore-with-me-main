@@ -35,7 +35,7 @@ public class CompilationServiceImpl implements CompilationService {
         validateCompilationTitle(newCompilationDto.getTitle());
 
         Compilation compilation = new Compilation();
-        compilation.setTitle(newCompilationDto.getTitle().trim());
+        compilation.setTitle(newCompilationDto.getTitle());
         compilation.setPinned(newCompilationDto.getPinned() != null ? newCompilationDto.getPinned() : false);
 
         if (newCompilationDto.getEvents() != null && !newCompilationDto.getEvents().isEmpty()) {
@@ -68,7 +68,7 @@ public class CompilationServiceImpl implements CompilationService {
 
         if (updateCompilationRequest.getTitle() != null) {
             validateCompilationTitle(updateCompilationRequest.getTitle());
-            compilation.setTitle(updateCompilationRequest.getTitle().trim());
+            compilation.setTitle(updateCompilationRequest.getTitle());
         }
 
         if (updateCompilationRequest.getPinned() != null) {
