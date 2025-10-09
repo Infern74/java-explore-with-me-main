@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "fe65a204-7e6c-40e7-a157-9a9142cc3e97",
 		"name": "Event Ratings Tests",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
 		"_exporter_id": "42764075"
 	},
 	"item": [
@@ -41,18 +41,7 @@
 						}
 					}
 				},
-				"url": {
-					"raw": "http://localhost:8080/admin/users",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8080",
-					"path": [
-						"admin",
-						"users"
-					]
-				}
+				"url": "http://localhost:8080/admin/users"
 			},
 			"response": []
 		},
@@ -91,18 +80,7 @@
 						}
 					}
 				},
-				"url": {
-					"raw": "http://localhost:8080/admin/users",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8080",
-					"path": [
-						"admin",
-						"users"
-					]
-				}
+				"url": "http://localhost:8080/admin/users"
 			},
 			"response": []
 		},
@@ -141,18 +119,7 @@
 						}
 					}
 				},
-				"url": {
-					"raw": "http://localhost:8080/admin/categories",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8080",
-					"path": [
-						"admin",
-						"categories"
-					]
-				}
+				"url": "http://localhost:8080/admin/categories"
 			},
 			"response": []
 		},
@@ -191,19 +158,7 @@
 						}
 					}
 				},
-				"url": {
-					"raw": "http://localhost:8080/users/1/events",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8080",
-					"path": [
-						"users",
-						"1",
-						"events"
-					]
-				}
+				"url": "http://localhost:8080/users/1/events"
 			},
 			"response": []
 		},
@@ -241,19 +196,7 @@
 						}
 					}
 				},
-				"url": {
-					"raw": "http://localhost:8080/admin/events/1",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8080",
-					"path": [
-						"admin",
-						"events",
-						"1"
-					]
-				}
+				"url": "http://localhost:8080/admin/events/1"
 			},
 			"response": []
 		},
@@ -293,21 +236,7 @@
 						}
 					}
 				},
-				"url": {
-					"raw": "http://localhost:8080/users/2/ratings/events/1",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8080",
-					"path": [
-						"users",
-						"2",
-						"ratings",
-						"events",
-						"1"
-					]
-				}
+				"url": "http://localhost:8080/users/2/ratings/events/1"
 			},
 			"response": []
 		},
@@ -345,21 +274,7 @@
 						}
 					}
 				},
-				"url": {
-					"raw": "http://localhost:8080/users/1/ratings/events/1",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8080",
-					"path": [
-						"users",
-						"1",
-						"ratings",
-						"events",
-						"1"
-					]
-				}
+				"url": "http://localhost:8080/users/1/ratings/events/1"
 			},
 			"response": []
 		},
@@ -397,21 +312,7 @@
 						}
 					}
 				},
-				"url": {
-					"raw": "http://localhost:8080/users/2/ratings/events/1",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8080",
-					"path": [
-						"users",
-						"2",
-						"ratings",
-						"events",
-						"1"
-					]
-				}
+				"url": "http://localhost:8080/users/2/ratings/events/1"
 			},
 			"response": []
 		},
@@ -443,19 +344,7 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"url": {
-					"raw": "http://localhost:8080/ratings/events/1",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8080",
-					"path": [
-						"ratings",
-						"events",
-						"1"
-					]
-				}
+				"url": "http://localhost:8080/ratings/events/1"
 			},
 			"response": []
 		},
