@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "fe65a204-7e6c-40e7-a157-9a9142cc3e97",
 		"name": "Event Ratings Tests",
-		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "42764075"
 	},
 	"item": [
@@ -41,7 +41,18 @@
 						}
 					}
 				},
-				"url": "http://localhost:8080/admin/users"
+				"url": {
+					"raw": "http://localhost:8080/admin/users",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"admin",
+						"users"
+					]
+				}
 			},
 			"response": []
 		},
@@ -80,7 +91,18 @@
 						}
 					}
 				},
-				"url": "http://localhost:8080/admin/users"
+				"url": {
+					"raw": "http://localhost:8080/admin/users",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"admin",
+						"users"
+					]
+				}
 			},
 			"response": []
 		},
@@ -119,7 +141,18 @@
 						}
 					}
 				},
-				"url": "http://localhost:8080/admin/categories"
+				"url": {
+					"raw": "http://localhost:8080/admin/categories",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"admin",
+						"categories"
+					]
+				}
 			},
 			"response": []
 		},
@@ -151,14 +184,26 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"annotation\": \"A great concert event for all music lovers\",\r\n    \"category\": 1,\r\n    \"description\": \"Detailed description of the amazing concert event with multiple performers.\",\r\n    \"eventDate\": \"2025-12-15 20:00:00\",\r\n    \"location\": {\r\n        \"lat\": 55.7558,\r\n        \"lon\": 37.6173\r\n    },\r\n    \"paid\": true,\r\n    \"participantLimit\": 100,\r\n    \"requestModeration\": true,\r\n    \"title\": \"Annual Music Festival 2024\"\r\n}",
+					"raw": "{\r\n    \"annotation\": \"A great concert event for all music lovers\",\r\n    \"category\": 122,\r\n    \"description\": \"Detailed description of the amazing concert event with multiple performers.\",\r\n    \"eventDate\": \"2025-12-15 20:00:00\",\r\n    \"location\": {\r\n        \"lat\": 55.7558,\r\n        \"lon\": 37.6173\r\n    },\r\n    \"paid\": true,\r\n    \"participantLimit\": 100,\r\n    \"requestModeration\": true,\r\n    \"title\": \"Annual Music Festival 2024\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
 						}
 					}
 				},
-				"url": "http://localhost:8080/users/1/events"
+				"url": {
+					"raw": "http://localhost:8080/users/137/events",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"users",
+						"137",
+						"events"
+					]
+				}
 			},
 			"response": []
 		},
@@ -196,7 +241,19 @@
 						}
 					}
 				},
-				"url": "http://localhost:8080/admin/events/1"
+				"url": {
+					"raw": "http://localhost:8080/admin/events/107",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"admin",
+						"events",
+						"107"
+					]
+				}
 			},
 			"response": []
 		},
@@ -236,7 +293,21 @@
 						}
 					}
 				},
-				"url": "http://localhost:8080/users/2/ratings/events/1"
+				"url": {
+					"raw": "http://localhost:8080/users/138/ratings/events/1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"users",
+						"138",
+						"ratings",
+						"events",
+						"1"
+					]
+				}
 			},
 			"response": []
 		},
@@ -274,7 +345,21 @@
 						}
 					}
 				},
-				"url": "http://localhost:8080/users/1/ratings/events/1"
+				"url": {
+					"raw": "http://localhost:8080/users/137/ratings/events/1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"users",
+						"137",
+						"ratings",
+						"events",
+						"1"
+					]
+				}
 			},
 			"response": []
 		},
@@ -312,7 +397,21 @@
 						}
 					}
 				},
-				"url": "http://localhost:8080/users/2/ratings/events/1"
+				"url": {
+					"raw": "http://localhost:8080/users/138/ratings/events/1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"users",
+						"138",
+						"ratings",
+						"events",
+						"1"
+					]
+				}
 			},
 			"response": []
 		},
@@ -344,7 +443,19 @@
 			"request": {
 				"method": "GET",
 				"header": [],
-				"url": "http://localhost:8080/ratings/events/1"
+				"url": {
+					"raw": "http://localhost:8080/ratings/events/1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"ratings",
+						"events",
+						"1"
+					]
+				}
 			},
 			"response": []
 		},
