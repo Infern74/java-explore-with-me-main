@@ -18,6 +18,7 @@ import ru.practicum.ewmservice.exception.ValidationException;
 import ru.practicum.ewmservice.mapper.EventMapper;
 import ru.practicum.ewmservice.model.Event;
 import ru.practicum.ewmservice.model.EventState;
+import ru.practicum.ewmservice.repository.EventRatingRepository;
 import ru.practicum.ewmservice.repository.EventRepository;
 import ru.practicum.ewmservice.repository.EventSpecifications;
 import ru.practicum.ewmservice.repository.ParticipationRequestRepository;
@@ -38,6 +39,7 @@ public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
     private final StatsIntegrationService statsIntegrationService;
     private final ParticipationRequestRepository requestRepository;
+    private final EventRatingRepository ratingRepository;
 
     @Override
     public List<EventShortDto> getEvents(String text, List<Long> categories, Boolean paid,
@@ -70,16 +72,26 @@ public class EventServiceImpl implements EventService {
 
         Map<Long, Long> viewsMap = getEventsViews(events);
         Map<Long, Long> confirmedRequestsMap = getConfirmedRequestsMap(events);
+        Map<Long, Long> likesMap = getEventsLikes(events);
+        Map<Long, Long> dislikesMap = getEventsDislikes(events);
 
         List<EventShortDto> result = events.stream()
                 .map(event -> {
                     Long eventViews = viewsMap.getOrDefault(event.getId(), 0L);
                     Long confirmedRequests = confirmedRequestsMap.getOrDefault(event.getId(), 0L);
-                    return EventMapper.toEventShortDto(event, eventViews, confirmedRequests);
+                    Long likes = likesMap.getOrDefault(event.getId(), 0L);
+                    Long dislikes = dislikesMap.getOrDefault(event.getId(), 0L);
+                    EventShortDto dto = EventMapper.toEventShortDto(event, eventViews, confirmedRequests);
+                    dto.setLikes(likes);
+                    dto.setDislikes(dislikes);
+                    dto.setRating(likes - dislikes);
+                    return dto;
                 })
                 .collect(Collectors.toList());
 
-        if ("VIEWS".equals(sort)) {
+        if ("RATING".equals(sort)) {
+            result.sort(Comparator.comparing(EventShortDto::getRating).reversed());
+        } else if ("VIEWS".equals(sort)) {
             result.sort(Comparator.comparing(EventShortDto::getViews).reversed());
         }
 
@@ -96,7 +108,15 @@ public class EventServiceImpl implements EventService {
 
         Long views = getEventViews(eventId);
         Long confirmedRequests = requestRepository.getConfirmedRequestsCount(eventId);
-        return EventMapper.toEventFullDto(event, views, confirmedRequests);
+        Long likes = ratingRepository.countLikesByEventId(eventId);
+        Long dislikes = ratingRepository.countDislikesByEventId(eventId);
+
+        EventFullDto dto = EventMapper.toEventFullDto(event, views, confirmedRequests);
+        dto.setLikes(likes);
+        dto.setDislikes(dislikes);
+        dto.setRating(likes - dislikes);
+
+        return dto;
     }
 
     @Override
@@ -123,12 +143,20 @@ public class EventServiceImpl implements EventService {
 
         Map<Long, Long> viewsMap = getEventsViews(events);
         Map<Long, Long> confirmedRequestsMap = getConfirmedRequestsMap(events);
+        Map<Long, Long> likesMap = getEventsLikes(events);
+        Map<Long, Long> dislikesMap = getEventsDislikes(events);
 
         return events.stream()
                 .map(event -> {
                     Long eventViews = viewsMap.getOrDefault(event.getId(), 0L);
                     Long confirmedRequests = confirmedRequestsMap.getOrDefault(event.getId(), 0L);
-                    return EventMapper.toEventFullDto(event, eventViews, confirmedRequests);
+                    Long likes = likesMap.getOrDefault(event.getId(), 0L);
+                    Long dislikes = dislikesMap.getOrDefault(event.getId(), 0L);
+                    EventFullDto dto = EventMapper.toEventFullDto(event, eventViews, confirmedRequests);
+                    dto.setLikes(likes);
+                    dto.setDislikes(dislikes);
+                    dto.setRating(likes - dislikes);
+                    return dto;
                 })
                 .collect(Collectors.toList());
     }
@@ -164,7 +192,31 @@ public class EventServiceImpl implements EventService {
 
         Long views = getEventViews(eventId);
         Long confirmedRequests = requestRepository.getConfirmedRequestsCount(eventId);
-        return EventMapper.toEventFullDto(updatedEvent, views, confirmedRequests);
+        Long likes = ratingRepository.countLikesByEventId(eventId);
+        Long dislikes = ratingRepository.countDislikesByEventId(eventId);
+
+        EventFullDto dto = EventMapper.toEventFullDto(updatedEvent, views, confirmedRequests);
+        dto.setLikes(likes);
+        dto.setDislikes(dislikes);
+        dto.setRating(likes - dislikes);
+
+        return dto;
+    }
+
+    private Map<Long, Long> getEventsLikes(List<Event> events) {
+        return events.stream()
+                .collect(Collectors.toMap(
+                        Event::getId,
+                        event -> ratingRepository.countLikesByEventId(event.getId())
+                ));
+    }
+
+    private Map<Long, Long> getEventsDislikes(List<Event> events) {
+        return events.stream()
+                .collect(Collectors.toMap(
+                        Event::getId,
+                        event -> ratingRepository.countDislikesByEventId(event.getId())
+                ));
     }
 
     private Event getEventByIdOrThrow(Long eventId) {

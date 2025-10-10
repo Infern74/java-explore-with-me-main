@@ -4,12 +4,14 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 public class UserDto {
     private Long id;
 
@@ -21,4 +23,6 @@ public class UserDto {
     @Email(message = "Email must be valid")
     @Size(min = 6, max = 254, message = "Email must be between 6 and 254 characters")
     private String email;
+
+    private Long rating;
 }

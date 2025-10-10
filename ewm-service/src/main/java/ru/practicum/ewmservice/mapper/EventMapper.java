@@ -43,6 +43,11 @@ public class EventMapper {
         dto.setRequestModeration(event.getRequestModeration());
         dto.setViews(views != null ? views : 0L);
         dto.setConfirmedRequests(confirmedRequests != null ? confirmedRequests : 0L);
+
+        dto.setLikes(0L);
+        dto.setDislikes(0L);
+        dto.setRating(0L);
+
         return dto;
     }
 
@@ -68,6 +73,11 @@ public class EventMapper {
         dto.setPaid(event.getPaid());
         dto.setViews(views != null ? views : 0L);
         dto.setConfirmedRequests(confirmedRequests != null ? confirmedRequests : 0L);
+
+        dto.setLikes(0L);
+        dto.setDislikes(0L);
+        dto.setRating(0L);
+
         return dto;
     }
 

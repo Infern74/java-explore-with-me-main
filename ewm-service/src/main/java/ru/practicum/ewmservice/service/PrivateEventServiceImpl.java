@@ -19,10 +19,7 @@ import ru.practicum.ewmservice.model.Category;
 import ru.practicum.ewmservice.model.Event;
 import ru.practicum.ewmservice.model.EventState;
 import ru.practicum.ewmservice.model.User;
-import ru.practicum.ewmservice.repository.CategoryRepository;
-import ru.practicum.ewmservice.repository.EventRepository;
-import ru.practicum.ewmservice.repository.ParticipationRequestRepository;
-import ru.practicum.ewmservice.repository.UserRepository;
+import ru.practicum.ewmservice.repository.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -39,6 +36,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     private final CategoryRepository categoryRepository;
     private final ParticipationRequestRepository requestRepository;
     private final StatsIntegrationService statsIntegrationService;
+    private final EventRatingRepository ratingRepository;
 
     @Override
     public List<EventShortDto> getUserEvents(Long userId, Integer from, Integer size) {
@@ -60,7 +58,13 @@ public class PrivateEventServiceImpl implements PrivateEventService {
                 .map(event -> {
                     Long views = statsIntegrationService.getEventViews(event.getId());
                     Long confirmedRequests = requestRepository.getConfirmedRequestsCount(event.getId());
-                    return EventMapper.toEventShortDto(event, views, confirmedRequests);
+                    Long likes = ratingRepository.countLikesByEventId(event.getId());
+                    Long dislikes = ratingRepository.countDislikesByEventId(event.getId());
+                    EventShortDto dto = EventMapper.toEventShortDto(event, views, confirmedRequests);
+                    dto.setLikes(likes);
+                    dto.setDislikes(dislikes);
+                    dto.setRating(likes - dislikes);
+                    return dto;
                 })
                 .collect(Collectors.toList());
     }
@@ -80,7 +84,12 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         Event event = EventMapper.toEvent(newEventDto, user, category);
         Event savedEvent = eventRepository.save(event);
 
-        return EventMapper.toEventFullDto(savedEvent, 0L, 0L);
+        EventFullDto dto = EventMapper.toEventFullDto(savedEvent, 0L, 0L);
+        dto.setLikes(0L);
+        dto.setDislikes(0L);
+        dto.setRating(0L);
+
+        return dto;
     }
 
     @Override
@@ -89,7 +98,15 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
         Long views = statsIntegrationService.getEventViews(eventId);
         Long confirmedRequests = requestRepository.getConfirmedRequestsCount(eventId);
-        return EventMapper.toEventFullDto(event, views, confirmedRequests);
+        Long likes = ratingRepository.countLikesByEventId(eventId);
+        Long dislikes = ratingRepository.countDislikesByEventId(eventId);
+
+        EventFullDto dto = EventMapper.toEventFullDto(event, views, confirmedRequests);
+        dto.setLikes(likes);
+        dto.setDislikes(dislikes);
+        dto.setRating(likes - dislikes);
+
+        return dto;
     }
 
     @Override
@@ -119,7 +136,15 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
         Long views = statsIntegrationService.getEventViews(eventId);
         Long confirmedRequests = requestRepository.getConfirmedRequestsCount(eventId);
-        return EventMapper.toEventFullDto(updatedEvent, views, confirmedRequests);
+        Long likes = ratingRepository.countLikesByEventId(eventId);
+        Long dislikes = ratingRepository.countDislikesByEventId(eventId);
+
+        EventFullDto dto = EventMapper.toEventFullDto(updatedEvent, views, confirmedRequests);
+        dto.setLikes(likes);
+        dto.setDislikes(dislikes);
+        dto.setRating(likes - dislikes);
+
+        return dto;
     }
 
     private User getUserByIdOrThrow(Long userId) {
